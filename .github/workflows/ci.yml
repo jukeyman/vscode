@@ -1,328 +1,171 @@
-name: CI
+name: AI Ecosystem CI
 
-on: workflow_dispatch
-permissions: {}
-
-# on:
-#   push:
-#     branches:
-#       - main
-#       - release/*
-#   pull_request:
-#     branches:
-#       - main
-#       - release/*
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
-  windows:
-    name: Windows
-    runs-on: windows-2022
-    timeout-minutes: 60
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Compute node modules cache key
-        id: nodeModulesCacheKey
-        run: echo "value=$(node build/azure-pipelines/common/computeNodeModulesCacheKey.js)" >> $GITHUB_OUTPUT
-      - name: Cache node_modules archive
-        id: cacheNodeModules
-        uses: actions/cache@v4
-        with:
-          path: ".build/node_modules_cache"
-          key: "${{ runner.os }}-cacheNodeModulesArchive-${{ steps.nodeModulesCacheKey.outputs.value }}"
-      - name: Extract node_modules archive
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit == 'true' }}
-        run: 7z.exe x .build/node_modules_cache/cache.7z -aos
-      - name: Get npm cache directory path
-        id: npmCacheDirPath
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-      - name: Cache npm directory
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.npmCacheDirPath.outputs.dir }}
-          key: ${{ runner.os }}-npmCacheDir-${{ steps.nodeModulesCacheKey.outputs.value }}
-          restore-keys: ${{ runner.os }}-npmCacheDir-
-      - name: Execute npm
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        env:
-          npm_config_foreground_scripts: "true"
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-        run: npm ci
-      - name: Create node_modules archive
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: |
-          mkdir -Force .build
-          node build/azure-pipelines/common/listNodeModules.js .build/node_modules_list.txt
-          mkdir -Force .build/node_modules_cache
-          7z.exe a .build/node_modules_cache/cache.7z -mx3 `@.build/node_modules_list.txt
-
-      - name: Compile and Download
-        run: npm exec -- npm-run-all -lp compile "electron x64" playwright-install download-builtin-extensions
-
-      - name: Compile Integration Tests
-        run: npm run compile
-        working-directory: test/integration/browser
-
-      - name: Run Unit Tests (Electron)
-        run: .\scripts\test.bat
-
-      - name: Run Unit Tests (node.js)
-        run: npm run test-node
-
-      - name: Run Unit Tests (Browser, Chromium)
-        run: npm run test-browser-no-install -- --browser chromium
-
-      - name: Run Integration Tests (Electron)
-        run: .\scripts\test-integration.bat
-
-      - name: Run Integration Tests (Browser, Firefox)
-        timeout-minutes: 20
-        run: .\scripts\test-web-integration.bat --browser firefox
-
-      - name: Run Integration Tests (Remote)
-        timeout-minutes: 20
-        run: .\scripts\test-remote-integration.bat
-
-  linux:
-    name: Linux
+  lint-agent-definitions:
+    name: Lint Agent Definitions
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # TODO: rename azure-pipelines/linux/xvfb.init to github-actions
-      - name: Setup Build Environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' 
+
+      - name: Install AJV CLI
+        run: npm install -g ajv-cli
+
+      - name: Validate Agent Definitions with AJV
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libxkbfile-dev pkg-config libkrb5-dev libxss1 xvfb libgtk-3-0 libgbm1
-          sudo cp build/azure-pipelines/linux/xvfb.init /etc/init.d/xvfb
-          sudo chmod +x /etc/init.d/xvfb
-          sudo update-rc.d xvfb defaults
-          sudo service xvfb start
+          SCHEMA_FILE_ROOT="agent-definition.schema.json"
+          SCHEMA_FILE_SCHEMAS_DIR=".schemas/agent-definition.schema.json"
+          ACTUAL_SCHEMA_FILE=""
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
+          if [ -f "$SCHEMA_FILE_ROOT" ]; then
+            ACTUAL_SCHEMA_FILE="$SCHEMA_FILE_ROOT"
+            echo "Using schema file from root: $ACTUAL_SCHEMA_FILE"
+          elif [ -f "$SCHEMA_FILE_SCHEMAS_DIR" ]; then
+            ACTUAL_SCHEMA_FILE="$SCHEMA_FILE_SCHEMAS_DIR"
+            echo "Using schema file from .schemas directory: $ACTUAL_SCHEMA_FILE"
+          else
+            echo "Schema file agent-definition.schema.json not found at root or in .schemas/!"
+            exit 1
+          fi
+          
+          # Find files in either directory, command will not fail if one path doesn't exist.
+          AGENT_FILES=$(find .jules/agents/ agents/ -type f \( -name "*.yaml" -o -name "*.yml" \) 2>/dev/null || true)
+          
+          if [ -z "$AGENT_FILES" ]; then
+            echo "No agent definition files found in /.jules/agents/ or /agents/ to validate."
+            # Exit successfully if no files are found, change to exit 1 if files are mandatory for the build to pass.
+            exit 0
+          fi
+          
+          echo "Found agent files to validate:"
+          echo "$AGENT_FILES"
+          
+          # Prepare files for AJV: replace newlines with spaces for a single command line argument
+          # This is safer than relying on shell expansion of $AGENT_FILES directly if filenames had spaces (unlikely here)
+          AGENT_FILES_STR=$(echo "$AGENT_FILES" | tr '\n' ' ')
 
-      - name: Compute node modules cache key
-        id: nodeModulesCacheKey
-        run: echo "value=$(node build/azure-pipelines/common/computeNodeModulesCacheKey.js)" >> $GITHUB_OUTPUT
-      - name: Cache node modules
-        id: cacheNodeModules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-cacheNodeModulesLinux-${{ steps.nodeModulesCacheKey.outputs.value }}
-      - name: Get npm cache directory path
-        id: npmCacheDirPath
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-      - name: Cache npm directory
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.npmCacheDirPath.outputs.dir }}
-          key: ${{ runner.os }}-npmCacheDir-${{ steps.nodeModulesCacheKey.outputs.value }}
-          restore-keys: ${{ runner.os }}-npmCacheDir-
-      - name: Execute npm
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-        run: npm ci
+          # Validate all found agent files against the schema
+          # --strict=true for stricter validation if supported by your AJV version and schema
+          ajv validate -s "$ACTUAL_SCHEMA_FILE" -d "$AGENT_FILES_STR" --errors=text --strict=true
 
-      - name: Compile and Download
-        run: npm exec -- npm-run-all -lp compile "electron x64" playwright-install download-builtin-extensions
 
-      - name: Compile Integration Tests
-        run: npm run compile
-        working-directory: test/integration/browser
-
-      - name: Run Unit Tests (Electron)
-        id: electron-unit-tests
-        run: DISPLAY=:10 ./scripts/test.sh
-
-      - name: Run Unit Tests (node.js)
-        id: nodejs-unit-tests
-        run: npm run test-node
-
-      - name: Run Unit Tests (Browser, Chromium)
-        id: browser-unit-tests
-        run: DISPLAY=:10 npm run test-browser-no-install -- --browser chromium
-
-      - name: Run Integration Tests (Electron)
-        id: electron-integration-tests
-        run: DISPLAY=:10 ./scripts/test-integration.sh
-
-      - name: Run Integration Tests (Browser, Chromium)
-        id: browser-integration-tests
-        run: DISPLAY=:10 ./scripts/test-web-integration.sh --browser chromium
-
-      - name: Run Integration Tests (Remote)
-        id: electron-remote-integration-tests
-        timeout-minutes: 15
-        run: DISPLAY=:10 ./scripts/test-remote-integration.sh
-
-  darwin:
-    name: macOS
-    runs-on: macos-latest
-    timeout-minutes: 40
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Compute node modules cache key
-        id: nodeModulesCacheKey
-        run: echo "value=$(node build/azure-pipelines/common/computeNodeModulesCacheKey.js)" >> $GITHUB_OUTPUT
-      - name: Cache node modules
-        id: cacheNodeModules
-        uses: actions/cache@v4
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-cacheNodeModulesMacOS-${{ steps.nodeModulesCacheKey.outputs.value }}
-      - name: Get npm cache directory path
-        id: npmCacheDirPath
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-      - name: Cache npm directory
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.npmCacheDirPath.outputs.dir }}
-          key: ${{ runner.os }}-npmCacheDir-${{ steps.nodeModulesCacheKey.outputs.value }}
-          restore-keys: ${{ runner.os }}-npmCacheDir-
-      - name: Execute npm
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-        run: npm ci
-
-      - name: Compile and Download
-        run: npm exec -- npm-run-all -lp compile "electron x64" playwright-install download-builtin-extensions
-
-      - name: Compile Integration Tests
-        run: npm run compile
-        working-directory: test/integration/browser
-
-      # This is required for SecretStorage unittests
-      - name: Create temporary keychain
-        run: |
-          security create-keychain -p pwd $RUNNER_TEMP/buildagent.keychain
-          security default-keychain -s $RUNNER_TEMP/buildagent.keychain
-          security unlock-keychain -p pwd $RUNNER_TEMP/buildagent.keychain
-
-      - name: Run Unit Tests (Electron)
-        run: DISPLAY=:10 ./scripts/test.sh
-
-      - name: Run Unit Tests (node.js)
-        run: npm run test-node
-
-      - name: Run Unit Tests (Browser, Chromium)
-        run: DISPLAY=:10 npm run test-browser-no-install -- --browser chromium
-
-      - name: Run Integration Tests (Electron)
-        run: DISPLAY=:10 ./scripts/test-integration.sh
-
-      - name: Run Integration Tests (Browser, Webkit)
-        run: DISPLAY=:10 ./scripts/test-web-integration.sh --browser webkit
-
-      - name: Run Integration Tests (Remote)
-        timeout-minutes: 15
-        run: DISPLAY=:10 ./scripts/test-remote-integration.sh
-
-  hygiene:
-    name: Hygiene and Layering
+  test-python-libraries:
+    name: Test Python Libraries
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        python-version: ['3.9'] # Start with one, can expand to e.g., [3.9, '3.10', '3.11']
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5 
         with:
-          persist-credentials: false
+          python-version: ${{ matrix.python-version }}
 
-      - uses: actions/setup-node@v4
+      - name: Install Python dependencies
+        run: |
+          PYTHON_LIBRARIES_PATH="libraries/python"
+          if [ -f "$PYTHON_LIBRARIES_PATH/requirements.txt" ]; then
+            pip install -r "$PYTHON_LIBRARIES_PATH/requirements.txt"
+          else
+            echo "No requirements.txt found at $PYTHON_LIBRARIES_PATH/requirements.txt. Skipping pip install of specific requirements."
+          fi
+          # Ensure linters and test runners are installed even if no project requirements.txt
+          echo "Installing Flake8 and Pytest..."
+          pip install flake8 pytest 
+
+      - name: Lint with Flake8
+        run: |
+          PYTHON_LIBRARIES_PATH="libraries/python"
+          # Check if the directory exists and contains any .py files
+          if [ -d "$PYTHON_LIBRARIES_PATH" ] && [ -n "$(find $PYTHON_LIBRARIES_PATH -maxdepth 1 -name '*.py' -print -quit)" ]; then
+            echo "Linting Python files in $PYTHON_LIBRARIES_PATH..."
+            flake8 "$PYTHON_LIBRARIES_PATH/"
+          else
+            echo "Directory $PYTHON_LIBRARIES_PATH not found or contains no .py files directly under it. Skipping Flake8."
+          fi
+
+      - name: Run Pytests
+        run: |
+          PYTHON_LIBRARIES_PATH="libraries/python"
+          PYTHON_TESTS_PATH="$PYTHON_LIBRARIES_PATH/tests" # Standard place for tests
+          # Check if the tests directory exists and has test_*.py files
+          if [ -d "$PYTHON_TESTS_PATH" ] && [ -n "$(find $PYTHON_TESTS_PATH -maxdepth 1 -name 'test_*.py' -print -quit)" ]; then
+            echo "Running tests in $PYTHON_TESTS_PATH..."
+            pytest "$PYTHON_TESTS_PATH/"
+          else
+            echo "Test directory $PYTHON_TESTS_PATH not found or contains no test_*.py files. Skipping Pytest."
+            # Depending on requirements, you might want to exit 1 if tests are expected but not found.
+          fi
+
+  build-vscode-extension:
+    name: Build VS Code Extension
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: '18.x' # Specify a major version, e.g., 18.x
 
-      - name: Compute node modules cache key
-        id: nodeModulesCacheKey
-        run: echo "value=$(node build/azure-pipelines/common/computeNodeModulesCacheKey.js)" >> $GITHUB_OUTPUT
-      - name: Cache node modules
-        id: cacheNodeModules
-        uses: actions/cache@v4
+      - name: Build ai-ecosystem-core extension
+        # This assumes the extension is in extensions/ai-ecosystem-core
+        # Add similar blocks for other extensions if they exist
+        working-directory: ./extensions/ai-ecosystem-core
+        run: |
+          if [ ! -f package.json ]; then
+            echo "package.json not found in $(pwd). Skipping build for this extension."
+            # Depending on requirements, you might want to exit 1 if package.json is expected.
+            exit 0 
+          fi
+          echo "Installing dependencies for ai-ecosystem-core..."
+          npm ci
+          echo "Compiling TypeScript for ai-ecosystem-core..."
+          # Check if compile script exists, otherwise run tsc directly
+          if npm run-script | grep -q 'compile'; then
+            npm run compile
+          else
+            echo "No 'compile' script found in package.json, attempting direct tsc execution..."
+            # Ensure typescript is available, either from devDependencies or globally (less ideal)
+            if ! npx tsc -p .; then
+              echo "Failed to compile with tsc. Ensure TypeScript is installed and a tsconfig.json exists."
+              exit 1
+            fi
+          fi
+          echo "Packaging ai-ecosystem-core extension..."
+          # Install vsce locally if not already a devDependency to avoid global install issues
+          # and ensure it's available for npx
+          if ! npm list --depth=0 | grep -q '@vscode/vsce'; then
+            echo "Installing @vscode/vsce locally..."
+            npm install --save-dev @vscode/vsce 
+          fi
+          npx vsce package
+      
+      - name: Upload VSIX Artifact
+        uses: actions/upload-artifact@v4 
         with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-cacheNodeModulesLinux-${{ steps.nodeModulesCacheKey.outputs.value }}
-      - name: Get npm cache directory path
-        id: npmCacheDirPath
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-      - name: Cache npm directory
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.npmCacheDirPath.outputs.dir }}
-          key: ${{ runner.os }}-npmCacheDir-${{ steps.nodeModulesCacheKey.outputs.value }}
-          restore-keys: ${{ runner.os }}-npmCacheDir-
-      - name: Execute npm
-        if: ${{ steps.cacheNodeModules.outputs.cache-hit != 'true' }}
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-        run: npm ci
-
-      - name: Download Playwright
-        run: npm run playwright-install
-
-      - name: Run Hygiene Checks
-        run: npm run gulp hygiene
-
-      - name: Run Valid Layers Checks
-        run: npm run valid-layers-check
-
-      - name: Run Define Class Fields Checks
-        run: npm run define-class-fields-check
-
-      - name: Compile /build/
-        run: npm run compile
-        working-directory: build
-
-      - name: Check clean git state
-        run: ./.github/workflows/check-clean-git-state.sh
-
-      - name: Run eslint
-        run: npm run eslint
-
-      - name: Run vscode-dts Compile Checks
-        run: npm run vscode-dts-compile-check
-
-      - name: Run Trusted Types Checks
-        run: npm run tsec-compile-check
+          name: vscode-extension-vsix-${{ github.run_id }}-${{ github.sha }} # Unique name for artifact
+          # Path to the generated .vsix file. Glob pattern can be used if name is dynamic.
+          # Assumes vsce package outputs the vsix in the current working directory (extensions/ai-ecosystem-core)
+          path: ./extensions/ai-ecosystem-core/*.vsix 
+          if-no-files-found: error # Error if the vsix file is not found
+```

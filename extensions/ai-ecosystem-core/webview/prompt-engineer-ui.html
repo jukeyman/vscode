@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Engineering UI</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family, sans-serif);
+            padding: 20px;
+            color: var(--vscode-editor-foreground);
+            background-color: var(--vscode-editor-background);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, textarea, button {
+            width: calc(100% - 22px); /* Account for padding/border */
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid var(--vscode-input-border, #ccc);
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 4px;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        #responseArea {
+            background-color: var(--vscode-textBlockQuote-background, #f0f0f0);
+            border: 1px solid var(--vscode-textBlockQuote-border, #ddd);
+            padding: 10px;
+            min-height: 150px;
+            white-space: pre-wrap; /* Preserve whitespace and wrap text */
+            word-wrap: break-word;
+            border-radius: 4px;
+            font-family: var(--vscode-editor-font-family, monospace);
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prompt Engineering UI</h1>
+
+        <label for="promptSelector">Select Prompt:</label>
+        <select id="promptSelector">
+            <option value="Summarize Text">Summarize Text</option>
+            <option value="Generate Code Comment">Generate Code Comment</option>
+            <option value="Translate to French">Translate to French</option>
+            <option value="Explain Concept">Explain Concept</option>
+        </select>
+
+        <label for="promptContext">Context/Variables (JSON or key-value pairs):</label>
+        <textarea id="promptContext" placeholder='Example: {"text": "This is some text to summarize."}\nOr key=value pairs on new lines for simpler cases.'></textarea>
+
+        <button id="sendPromptButton">Send Prompt</button>
+
+        <label for="responseArea">LLM Response:</label>
+        <pre id="responseArea">Awaiting prompt...</pre>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "name": "ai-ecosystem-core",
+  "publisher": "ai-ecosystem-dev",
+  "displayName": "AI Ecosystem Core",
+  "description": "Core extension for the AI Agent Development Ecosystem.",
+  "version": "0.0.4",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "activationEvents": [
+    "onCommand:ai-ecosystem-core.helloWorld",
+    "onCommand:ai-ecosystem-core.listAgents",
+    "onCommand:ai-ecosystem-core.validateAgents",
+    "onCommand:ai-ecosystem-core.createAgentDefinition",
+    "onCommand:ai-ecosystem-core.addAgentToolPython",
+    "onCommand:ai-ecosystem-core.openPromptEngineerUI"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "ai-ecosystem-core.helloWorld",
+        "title": "AI Eco: Hello World"
+      },
+      {
+        "command": "ai-ecosystem-core.listAgents",
+        "title": "AI Eco: List Agent Definitions"
+      },
+      {
+        "command": "ai-ecosystem-core.validateAgents",
+        "title": "AI Eco: Validate Agent Definitions"
+      },
+      {
+        "command": "ai-ecosystem-core.createAgentDefinition",
+        "title": "AI Eco: Create New Agent Definition"
+      },
+      {
+        "command": "ai-ecosystem-core.addAgentToolPython",
+        "title": "AI Eco: Add Agent Tool (Python)"
+      },
+      {
+        "command": "ai-ecosystem-core.openPromptEngineerUI",
+        "title": "AI Eco: Open Prompt Engineering UI"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@types/node": "^18.19.3",
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
