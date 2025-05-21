@@ -1,23 +1,198 @@
-.DS_Store
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib60/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
 .cache
-npm-debug.log
-Thumbs.db
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# PEP 582; __pypackages__ directory
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Node.js
 node_modules/
-.build/
-.vscode/extensions/**/out/
-extensions/**/dist/
-/out*/
-/extensions/**/out/
-build/node_modules
-coverage/
-test_data/
-test-results/
-test-results.xml
-vscode.lsif
-vscode.db
-/.profile-oss
-/cli/target
-/cli/openssl
-product.overrides.json
-*.snap.actual
-.vscode-test
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+# package-lock.json # Prefer to keep this for reproducibility
+# yarn.lock # Prefer to keep this for reproducibility
+# pnpm-lock.yaml # Prefer to keep this for reproducibility
+
+
+# TypeScript
+*.tsbuildinfo
+# dist/ # Often contains build artifacts, but can be project-specific
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and editors
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarnclean
+
+# dotenv environment variables file
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temp files & Logs
+tmp/
+temp/
+logs/
+*.log
+!*.log # Allow specific log files if needed, e.g. for a service
+
+# Python build artifacts
+/dist/
+/build/
+*.egg-info/
+
+# Test results
+/htmlcov/
+/.pytest_cache/
+
+# Local machine specific configuration files
+secrets.yaml
+config.local.yaml
+```
