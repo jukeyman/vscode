@@ -3,11 +3,12 @@ import * as fs from 'fs';
 import * as nodePath from 'path';
 import Ajv, { Schema } from 'ajv';
 import * as yaml from 'js-yaml';
-import { randomBytes } from 'crypto'; // For nonce generation
+import { randomBytes } from 'crypto';
 
-// Keep existing global variables
+// Global variables
 let aiOutputChannel: vscode.OutputChannel | undefined;
-let promptEngineerPanel: vscode.WebviewPanel | undefined = undefined; // For the prompt engineering UI
+let promptEngineerPanel: vscode.WebviewPanel | undefined = undefined;
+let simulatorPanel: vscode.WebviewPanel | undefined = undefined; // For the Agent Simulator
 
 // Helper function to get workspace root URI
 function getWorkspaceRootUri(): vscode.Uri | undefined {
@@ -19,7 +20,43 @@ function getWorkspaceRootPath(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
-// Helper function to load agent schema (simplified for brevity, assume it exists)
+// Helper function to get nonce (from previous step)
+function getNonce() {
+    return randomBytes(16).toString('base64');
+}
+
+// Generalized getWebviewHtml function
+function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlSubPath: string, jsFileName: string): string {
+    const htmlDiskPath = vscode.Uri.joinPath(extensionUri, 'webview', htmlSubPath);
+    let htmlContent = "";
+    try {
+        htmlContent = fs.readFileSync(htmlDiskPath.fsPath, 'utf8');
+    } catch (err) {
+        console.error(`Error reading HTML file ${htmlDiskPath.fsPath}:`, err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        return `<html><body>Error loading webview content from ${htmlDiskPath.fsPath}. Error: ${errorMsg}</body></html>`;
+    }
+
+    const scriptDiskPath = vscode.Uri.joinPath(extensionUri, 'webview', nodePath.dirname(htmlSubPath), jsFileName);
+    const scriptUri = webview.asWebviewUri(scriptDiskPath);
+    const nonce = getNonce();
+
+    htmlContent = htmlContent.replace(/\$\{webview\.cspSource\}/g, webview.cspSource);
+    htmlContent = htmlContent.replace(new RegExp('\\$\\{nonce\\}', 'g'), nonce); // Ensure all nonces are replaced
+    htmlContent = htmlContent.replace(/\$\{scriptUri\}/g, scriptUri.toString());
+    
+    return htmlContent;
+}
+
+// Helper function to find agent definition files (simplified, assume it exists from previous steps)
+async function findAgentDefinitionFiles(): Promise<vscode.Uri[]> {
+    const wsRoot = getWorkspaceRootUri();
+    if (!wsRoot) return [];
+    // Ensure this pattern correctly finds your agent files
+    return vscode.workspace.findFiles(new vscode.RelativePattern(wsRoot, '{agents/**/*.y*ml,.jules/agents/**/*.y*ml}'));
+}
+
+// --- Helper function to load agent schema (simplified for brevity, assume it exists from previous step) ---
 function getAgentSchema(workspaceRootPath: string): Schema | null {
     const schemaPathRoot = nodePath.join(workspaceRootPath, 'agent-definition.schema.json');
     if (fs.existsSync(schemaPathRoot)) {
@@ -39,50 +76,10 @@ function getAgentSchema(workspaceRootPath: string): Schema | null {
     return null;
 }
 
-// Helper function to find agent definition files (simplified for brevity)
-async function findAgentDefinitionFiles(): Promise<vscode.Uri[]> {
-    const wsRoot = getWorkspaceRootUri();
-    if (!wsRoot) return [];
-    return vscode.workspace.findFiles(new vscode.RelativePattern(wsRoot, '{agents/**/*.y*ml,.jules/agents/**/*.y*ml}'));
-}
-
-// Helper functions for Python tool name conversion (simplified for brevity)
+// --- Helper functions for Python tool name conversion (simplified for brevity, assume it exists from previous step) ---
 function toSnakeCase(str: string): string { return str.replace(/\s+/g, '_').toLowerCase(); }
 function toPascalCase(str: string): string { return str.replace(/(?:^|\s)\w/g, m => m.toUpperCase()).replace(/\s+/g, ''); }
 function getPythonToolBoilerplate(className: string): string { return `class ${className}:\n    pass\n`; }
-
-
-// Helper function to get nonce
-function getNonce() {
-    return randomBytes(16).toString('base64');
-}
-
-// Helper function to get HTML for webview, now with nonce and resource URI replacement
-function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlFileName: string): string {
-    const htmlDiskPath = vscode.Uri.joinPath(extensionUri, 'webview', htmlFileName);
-    let htmlContent = "";
-    try {
-        htmlContent = fs.readFileSync(htmlDiskPath.fsPath, 'utf8');
-    } catch (err) {
-        console.error(`Error reading HTML file ${htmlDiskPath.fsPath}:`, err);
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        return `<html><body>Error loading webview content from ${htmlDiskPath.fsPath}. Error: ${errorMsg}</body></html>`;
-    }
-
-    const scriptDiskPath = vscode.Uri.joinPath(extensionUri, 'webview', 'main.js');
-    const scriptUri = webview.asWebviewUri(scriptDiskPath);
-    
-    // Generate nonce
-    const nonce = getNonce();
-
-    // Replace placeholders for CSP nonce and resource URIs
-    // Ensure these placeholders exist in your HTML file.
-    htmlContent = htmlContent.replace(/\$\{webview\.cspSource\}/g, webview.cspSource);
-    htmlContent = htmlContent.replace(/\$\{nonce\}/g, nonce);
-    htmlContent = htmlContent.replace(/\$\{scriptUri\}/g, scriptUri.toString());
-    
-    return htmlContent;
-}
 
 
 export function activate(context: vscode.ExtensionContext) {
@@ -92,12 +89,10 @@ export function activate(context: vscode.ExtensionContext) {
     }
     aiOutputChannel.appendLine('AI Ecosystem Core extension activated.');
 
-    // --- Hello World Command (existing) ---
-    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.helloWorld', () => {
+    // --- Register other existing commands (simplified stubs for brevity) ---
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.helloWorld', () => { 
         vscode.window.showInformationMessage('Hello World from AI Ecosystem Core!');
     }));
-
-    // --- ListAgents Command (existing, simplified) ---
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.listAgents', async () => { 
         const agentFiles = await findAgentDefinitionFiles();
         if (agentFiles.length === 0) { vscode.window.showInformationMessage('No agent definitions found.'); return; }
@@ -115,9 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.window.showErrorMessage(`Error opening file: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
-     }));
-
-    // --- ValidateAgentDefinitions Command (existing, simplified) ---
+    }));
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.validateAgentDefinitions', async () => { 
         const workspaceRootPath = getWorkspaceRootPath();
         if (!workspaceRootPath) { vscode.window.showErrorMessage('No workspace open.'); return; }
@@ -167,8 +160,6 @@ export function activate(context: vscode.ExtensionContext) {
         }
         vscode.window.showInformationMessage('Validation complete. See "AI Ecosystem" output.');
     }));
-    
-    // --- CreateAgentDefinition Command (existing, simplified) ---
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.createAgentDefinition', async () => { 
         const workspaceRootPath = getWorkspaceRootPath();
         if (!workspaceRootPath) { vscode.window.showErrorMessage('No workspace open.'); return; }
@@ -189,8 +180,6 @@ export function activate(context: vscode.ExtensionContext) {
         await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(fileUri));
         vscode.window.showInformationMessage(`Agent '${nodePath.basename(filePath)}' created.`);
     }));
-
-    // --- AddAgentToolPython Command (existing, simplified) ---
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.addAgentToolPython', async () => { 
         const workspaceRootPath = getWorkspaceRootPath();
         if (!workspaceRootPath) { vscode.window.showErrorMessage("No workspace open."); return; }
@@ -217,66 +206,120 @@ export function activate(context: vscode.ExtensionContext) {
         await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(fullFileUri));
         vscode.window.showInformationMessage(`Python tool '${pythonFileName}' created in '${targetRelativeDir}'.`);
     }));
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => { /* ... (Prompt Engineer UI logic from previous step) ... */ 
+        if (promptEngineerPanel) { promptEngineerPanel.reveal(); return; }
+        promptEngineerPanel = vscode.window.createWebviewPanel('promptEngineerUI', 'Prompt Engineering UI', vscode.ViewColumn.One, 
+            { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'webview')] });
+        promptEngineerPanel.webview.html = getWebviewHtml(promptEngineerPanel.webview, context.extensionUri, 'prompt-engineer-ui.html', 'main.js'); // Assuming main.js for prompt UI
+        promptEngineerPanel.webview.onDidReceiveMessage(message => {
+            if (message.command === 'sendPrompt') {
+                aiOutputChannel?.appendLine(`Prompt UI: ${message.promptName}, Context: ${message.context}`);
+                promptEngineerPanel?.webview.postMessage({ command: 'llmResponse', response: `Mocked response to ${message.promptName}` });
+            }
+        });
+        promptEngineerPanel.onDidDispose(() => { promptEngineerPanel = undefined; }, null, context.subscriptions);
+    }));
 
-    // --- Register ai-ecosystem-core.openPromptEngineerUI command ---
-    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => {
+
+    // --- Register ai-ecosystem-core.openSimulator command ---
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openSimulator', () => {
         const columnToShowIn = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
 
-        if (promptEngineerPanel) {
-            // If we already have a panel, show it in the target column
-            promptEngineerPanel.reveal(columnToShowIn);
+        if (simulatorPanel) {
+            simulatorPanel.reveal(columnToShowIn);
             return;
-        } 
-        
-        // Otherwise, create a new panel
-        promptEngineerPanel = vscode.window.createWebviewPanel(
-            'promptEngineerUI', // Identifies the type of the webview. Used internally
-            'Prompt Engineering UI', // Title of the panel displayed to the user
-            columnToShowIn || vscode.ViewColumn.One, // Editor column to show the new webview panel in.
+        }
+
+        simulatorPanel = vscode.window.createWebviewPanel(
+            'agentSimulator', // Identifies the type of the webview.
+            '🧪 Agent Simulator', // Title of the panel.
+            columnToShowIn || vscode.ViewColumn.One,
             {
-                // Enable scripts in the webview
                 enableScripts: true,
-                // Restrict the webview to only loading content from our extension's `webview` directory.
-                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'webview')]
+                localResourceRoots: [
+                    vscode.Uri.joinPath(context.extensionUri, 'webview'), // General webview resources
+                    vscode.Uri.joinPath(context.extensionUri, 'webview', 'simulator') // Simulator specific
+                ]
             }
         );
 
-        promptEngineerPanel.webview.html = getWebviewHtml(promptEngineerPanel.webview, context.extensionUri, 'prompt-engineer-ui.html');
+        simulatorPanel.webview.html = getWebviewHtml(simulatorPanel.webview, context.extensionUri, 'simulator/simulator-ui.html', 'simulator-main.js');
 
         // Handle messages from the webview
-        promptEngineerPanel.webview.onDidReceiveMessage(
-            message => {
+        simulatorPanel.webview.onDidReceiveMessage(
+            async message => {
                 switch (message.command) {
-                    case 'sendPrompt':
-                        const promptName = message.promptName;
-                        const contextText = message.context;
-                        
-                        aiOutputChannel?.appendLine(`Prompt UI: Received prompt='${promptName}', context='${contextText}'`);
-                        vscode.window.showInformationMessage(`Received prompt: ${promptName}. Check "AI Ecosystem" output channel for details.`);
-
-                        // Mocked LLM Response
-                        const mockResponse = `Mock response for '${promptName}' with context '${contextText || 'empty'}'. Timestamp: ${new Date().toLocaleTimeString()}`;
-                        
-                        promptEngineerPanel?.webview.postMessage({ command: 'llmResponse', response: mockResponse });
+                    case 'uiReady':
+                        try {
+                            const agentUris = await findAgentDefinitionFiles();
+                            const workspaceRootPath = getWorkspaceRootPath() || ''; 
+                            const agentList = agentUris.map(uri => ({
+                                id: uri.fsPath, 
+                                name: nodePath.basename(uri.fsPath) + (workspaceRootPath ? ` (${nodePath.relative(workspaceRootPath, uri.fsPath)})` : '')
+                            }));
+                            simulatorPanel?.webview.postMessage({ command: 'populateAgentSelector', agents: agentList });
+                        } catch (e) {
+                            const errorMsg = e instanceof Error ? e.message : String(e);
+                            vscode.window.showErrorMessage('Error finding agent definitions for simulator: ' + errorMsg);
+                            aiOutputChannel?.appendLine('Error finding agent definitions for simulator: ' + errorMsg);
+                            simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: 'Error: Could not load agent list.' });
+                        }
                         return;
-                    // Add other cases for different commands from the webview
+                    case 'runSimulation':
+                        aiOutputChannel?.appendLine(`Simulator: Run requested for agent: ${message.agentId} with input: "${message.initialInput}"`);
+                        simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: `Simulation started for agent: ${message.agentId}` });
+                        simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: `Initial input: "${message.initialInput}"` });
+                        simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'running' }); 
+                        
+                        // Simulate some processing
+                        setTimeout(() => {
+                            simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: 'Agent processing step 1...' });
+                        }, 500);
+                        setTimeout(() => {
+                            simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: 'Agent processing step 2... encountering condition...' });
+                            simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'paused' }); 
+                        }, 1500);
+                        return;
+                    case 'controlSimulation':
+                        aiOutputChannel?.appendLine(`Simulator: Control action: ${message.action}`);
+                        simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: `Control action: ${message.action} received.` });
+                        
+                        if (message.action === 'stop') {
+                            simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'stopped' });
+                        } else if (message.action === 'pause') {
+                             simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'paused' });
+                        } else if (message.action === 'resume') {
+                             simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: 'Resuming simulation... Agent continues processing...' });
+                             simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'running' }); 
+                             setTimeout(() => {
+                                simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: 'Agent processing step 3 after resume...' });
+                                simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'completed' }); // Or 'stopped'
+                            }, 1000);
+                        } else if (message.action === 'step') {
+                            simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: 'Stepping through next action... (mocked)' });
+                            // Stays paused after a step for this mock
+                            simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'paused' }); 
+                        }
+                        return;
+                    case 'showErrorUser': // Renamed from 'showError' to distinguish from internal errors
+                        vscode.window.showErrorMessage(message.text);
+                        aiOutputChannel?.appendLine(`Error from Simulator UI: ${message.text}`);
+                        return;
                 }
             },
             undefined,
             context.subscriptions
         );
 
-        // Handle when the panel is closed
-        promptEngineerPanel.onDidDispose(
+        simulatorPanel.onDidDispose(
             () => {
-                promptEngineerPanel = undefined; // Reset the reference
+                simulatorPanel = undefined;
             },
             null,
             context.subscriptions
         );
-        
     }));
 }
 
@@ -287,5 +330,9 @@ export function deactivate() {
     if (promptEngineerPanel) {
         promptEngineerPanel.dispose();
     }
+    if (simulatorPanel) {
+        simulatorPanel.dispose();
+    }
 }
+
 ```

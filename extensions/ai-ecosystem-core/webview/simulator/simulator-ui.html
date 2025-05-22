@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none';
+                   style-src ${webview.cspSource} 'unsafe-inline';
+                   img-src ${webview.cspSource} https:;
+                   script-src 'nonce-${nonce}';">
+    <title>Agent Simulator</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family, sans-serif);
+            padding: 15px;
+            color: var(--vscode-editor-foreground);
+            background-color: var(--vscode-editor-background);
+            display: flex;
+            flex-direction: column;
+            height: 100vh; /* Use full viewport height */
+            box-sizing: border-box;
+        }
+        h1, h2 {
+            margin-top: 0; /* Remove default top margin for headings */
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, textarea#initialInput, button { /* Keep initialInput width specific if needed */
+            width: 100%; 
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            border: 1px solid var(--vscode-input-border, #ccc);
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 3px;
+        }
+         textarea#initialInput {
+             width: 98%; /* As per previous spec */
+             min-height: 60px; /* Ensure it's usable */
+             resize: vertical;
+        }
+        button {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        button:disabled {
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            cursor: not-allowed;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); /* Adjusted minmax for button text */
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .log-panel { /* Common styling for log areas */
+            background-color: var(--vscode-editor-background, #1e1e1e);
+            color: var(--vscode-editor-foreground, #d4d4d4);
+            border: 1px solid var(--vscode-input-border, #333);
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: var(--vscode-editor-font-family, monospace);
+            border-radius: 3px;
+            flex-grow: 1; /* Allow log panels to grow */
+            min-height: 150px; /* Minimum height for visibility */
+        }
+        .log-entry { /* Base style for log entries */
+            padding: 2px 0;
+            border-bottom: 1px solid var(--vscode-editorWidget-border, #454545); /* Subtle separator */
+        }
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+        .log-entry .timestamp { color: var(--vscode-textLink-foreground, #3794ff); margin-right: 5px; }
+        .log-entry .type-INFO { color: var(--vscode-terminal-ansiBrightBlue, #569CD6); font-weight: bold; }
+        .log-entry .type-THOUGHT { color: var(--vscode-terminal-ansiCyan, #56c8d6); }
+        .log-entry .type-ACTION { color: var(--vscode-terminal-ansiGreen, #38A169); }
+        .log-entry .type-TOOL_RESPONSE { color: var(--vscode-terminal-ansiYellow, #FFC107); } /* Corrected class name */
+        .log-entry .type-REFLECTION { color: var(--vscode-terminal-ansiMagenta, #C586C0); }
+        .log-entry .type-MOCK_INFO { color: var(--vscode-terminal-ansiBlue, #3B82F6); }
+        .log-entry .type-WARNING { color: var(--vscode-terminal-ansiBrightYellow, #FFD700); }
+        .log-entry .type-ERROR { color: var(--vscode-terminal-ansiRed, #F44336); font-weight: bold; }
+        
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1; /* Allow this to take available space */
+            min-height: 0; /* Necessary for flex-grow in nested flex containers */
+        }
+        .logs-container {
+            display: flex;
+            flex-direction: column; /* Stack logs vertically */
+            flex-grow: 1;
+            gap: 15px; /* Space between log areas */
+            min-height: 0; /* Important for scrollability within flex items */
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Agent Simulator</h1>
+
+    <label for="agentSelector">Select Agent:</label>
+    <select id="agentSelector">
+        <option value="">-- Select an Agent --</option>
+        <!-- Options will be populated by simulator-main.js -->
+    </select>
+
+    <label for="initialInput">Initial Task/Input:</label>
+    <textarea id="initialInput" rows="3"></textarea>
+
+    <div class="controls-grid">
+        <button id="runSimulationButton">Run</button>
+        <button id="pauseSimulationButton" disabled>Pause</button>
+        <button id="resumeSimulationButton" disabled>Resume</button>
+        <button id="stepSimulationButton" disabled>Step</button>
+        <button id="stopSimulationButton" disabled>Stop</button>
+    </div>
+
+    <div class="main-layout">
+        <div class="logs-container">
+            <div>
+                <h2>Simulation Log:</h2>
+                <div id="simulationLog" class="log-panel">
+                    <p class="log-entry">General simulation status messages will appear here...</p>
+                </div>
+            </div>
+            <div>
+                <h2>Agent Trace & Memory Viewer:</h2>
+                <div id="traceViewer" class="log-panel">
+                    <p class="log-entry">Trace events will appear here...</p>
+                </div>
+                <!-- Placeholder for memory view later -->
+                <!-- <div id="memoryView" style="margin-top: 10px; border-top: 1px solid #555; padding-top: 10px;">
+                    <h3>Memory Inspector:</h3>
+                    <p>Memory details will appear here...</p>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>
