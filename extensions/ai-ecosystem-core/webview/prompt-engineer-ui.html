@@ -3,30 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'none'; 
+                   style-src ${webview.cspSource} 'unsafe-inline'; 
+                   img-src ${webview.cspSource} https:;
+                   script-src 'nonce-${nonce}';">
     <title>Prompt Engineering UI</title>
     <style>
         body {
             font-family: var(--vscode-font-family, sans-serif);
-            padding: 20px;
+            padding: 15px;
             color: var(--vscode-editor-foreground);
             background-color: var(--vscode-editor-background);
         }
         label {
             display: block;
+            margin-top: 10px;
             margin-bottom: 5px;
             font-weight: bold;
         }
         select, textarea, button {
-            width: calc(100% - 22px); /* Account for padding/border */
-            padding: 10px;
-            margin-bottom: 15px;
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box; /* So padding doesn't add to width */
             border: 1px solid var(--vscode-input-border, #ccc);
             background-color: var(--vscode-input-background);
             color: var(--vscode-input-foreground);
-            border-radius: 4px;
+            border-radius: 3px;
         }
         textarea {
-            min-height: 100px;
+            min-height: 80px;
             resize: vertical;
         }
         button {
@@ -38,43 +45,43 @@
         button:hover {
             background-color: var(--vscode-button-hoverBackground);
         }
-        #responseArea {
+        pre#responseArea {
             background-color: var(--vscode-textBlockQuote-background, #f0f0f0);
             border: 1px solid var(--vscode-textBlockQuote-border, #ddd);
             padding: 10px;
-            min-height: 150px;
-            white-space: pre-wrap; /* Preserve whitespace and wrap text */
+            min-height: 100px;
+            white-space: pre-wrap; 
             word-wrap: break-word;
-            border-radius: 4px;
-            font-family: var(--vscode-editor-font-family, monospace);
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
+            border-radius: 3px;
+            font-family: var(--vscode-editor-font-family, monospace); /* Use editor font for monospace */
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Prompt Engineering UI</h1>
+    <h1>Prompt Engineering UI</h1>
 
+    <div>
         <label for="promptSelector">Select Prompt:</label>
         <select id="promptSelector">
-            <option value="Summarize Text">Summarize Text</option>
-            <option value="Generate Code Comment">Generate Code Comment</option>
-            <option value="Translate to French">Translate to French</option>
-            <option value="Explain Concept">Explain Concept</option>
+            <option value="mockPrompt1">Summarize Text (Mock)</option>
+            <option value="mockPrompt2">Generate Code Comment (Mock)</option>
+            <option value="explainConcept">Explain Concept (Mock)</option>
+            <option value="translateText">Translate Text (Mock)</option>
         </select>
-
-        <label for="promptContext">Context/Variables (JSON or key-value pairs):</label>
-        <textarea id="promptContext" placeholder='Example: {"text": "This is some text to summarize."}\nOr key=value pairs on new lines for simpler cases.'></textarea>
-
-        <button id="sendPromptButton">Send Prompt</button>
-
-        <label for="responseArea">LLM Response:</label>
-        <pre id="responseArea">Awaiting prompt...</pre>
     </div>
 
-    <script src="main.js"></script>
+    <div>
+        <label for="promptContext">Context/Variables (JSON):</label>
+        <textarea id="promptContext" rows="5" placeholder='Example: {"textToSummarize": "Long text here..."}'></textarea>
+    </div>
+
+    <div>
+        <button id="sendPromptButton">Send Prompt</button>
+    </div>
+
+    <h2>LLM Response:</h2>
+    <pre id="responseArea">Awaiting prompt...</pre>
+
+    <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>

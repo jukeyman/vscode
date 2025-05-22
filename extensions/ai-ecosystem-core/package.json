@@ -3,14 +3,14 @@
   "publisher": "ai-ecosystem-dev",
   "displayName": "AI Ecosystem Core",
   "description": "Core extension for the AI Agent Development Ecosystem.",
-  "version": "0.0.4",
+  "version": "0.1.3",
   "engines": {
     "vscode": "^1.80.0"
   },
   "activationEvents": [
     "onCommand:ai-ecosystem-core.helloWorld",
     "onCommand:ai-ecosystem-core.listAgents",
-    "onCommand:ai-ecosystem-core.validateAgents",
+    "onCommand:ai-ecosystem-core.validateAgentDefinitions",
     "onCommand:ai-ecosystem-core.createAgentDefinition",
     "onCommand:ai-ecosystem-core.addAgentToolPython",
     "onCommand:ai-ecosystem-core.openPromptEngineerUI"
@@ -27,7 +27,7 @@
         "title": "AI Eco: List Agent Definitions"
       },
       {
-        "command": "ai-ecosystem-core.validateAgents",
+        "command": "ai-ecosystem-core.validateAgentDefinitions",
         "title": "AI Eco: Validate Agent Definitions"
       },
       {
