@@ -4,31 +4,45 @@
   "description": "A comprehensive blueprint describing a software system, including its architecture, components, data models, APIs, and UI elements. Used as a specification for AI-driven generation.",
   "type": "object",
   "required": [
-    "metadata",
+    "projectMetadata",
     "applicationType",
-    "technologyStack"
+    "technologyStack",
+    "infrastructureSpecification"
   ],
   "properties": {
-    "metadata": {
+    "projectMetadata": {
       "type": "object",
-      "description": "Information about the blueprint itself.",
+      "description": "Information about the blueprint itself and the project.",
       "required": [
         "blueprintName",
-        "blueprintVersion"
+        "blueprintVersion",
+        "projectName"
       ],
       "properties": {
         "blueprintName": {
           "type": "string",
-          "description": "Name of the system or application being blueprinted."
+          "description": "Name of this blueprint document."
         },
         "blueprintVersion": {
           "type": "string",
           "pattern": "^\\d+\\.\\d+\\.\\d+.*$",
           "description": "Version of this blueprint document (e.g., 1.0.0)."
         },
-        "description": {
+        "projectName": {
+          "type": "string",
+          "description": "Name of the system or application being blueprinted."
+        },
+        "projectDescription": {
           "type": "string",
           "description": "A brief description of the system."
+        },
+        "targetEnvironments": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["development", "staging", "production", "testing", "UAT"]
+          },
+          "description": "List of target deployment environments."
         },
         "author": {
           "type": "string",
@@ -39,7 +53,8 @@
           "format": "date-time",
           "description": "Timestamp of blueprint creation."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "applicationType": {
       "type": "string",
@@ -53,6 +68,8 @@
         "desktop-application",
         "iot-system",
         "data-pipeline",
+        "game",
+        "blockchain-dapp",
         "other"
       ]
     },
@@ -61,170 +78,86 @@
       "description": "Defines the core technologies to be used.",
       "properties": {
         "frontend": {
-          "type": "object",
-          "description": "Frontend technology choices.",
-          "properties": {
-            "framework": {
-              "type": "string",
-              "description": "e.g., React, Vue, Angular, Svelte, Next.js, Flutter (for mobile/desktop)",
-              "enum": [
-                "React",
-                "Vue",
-                "Angular",
-                "Svelte",
-                "Next.js",
-                "Nuxt.js",
-                "Flutter",
-                "React Native",
-                "SwiftUI",
-                "Jetpack Compose",
-                "MAUI",
-                "Electron",
-                "None",
-                "Other"
-              ]
-            },
-            "language": {
-              "type": "string",
-              "enum": [
-                "JavaScript",
-                "TypeScript",
-                "Dart",
-                "Swift",
-                "Kotlin",
-                "CSharp",
-                "Python"
-              ]
-            },
-            "styling": {
-              "type": "string",
-              "description": "e.g., Tailwind CSS, Material UI, Bootstrap, CSS Modules, Styled Components"
-            },
-            "keyLibraries": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "List of key frontend libraries or packages."
-            }
-          }
+          "$ref": "#/definitions/frontendSpecification"
         },
         "backend": {
-          "type": "object",
-          "description": "Backend technology choices.",
-          "properties": {
-            "framework": {
-              "type": "string",
-              "description": "e.g., FastAPI, Express, NestJS, Spring Boot, Django, Ruby on Rails, Go Gin",
-              "enum": [
-                "FastAPI",
-                "Flask",
-                "Django",
-                "Express.js",
-                "NestJS",
-                "Spring Boot",
-                "Ruby on Rails",
-                "Go Gin",
-                "ASP.NET Core",
-                "None",
-                "Other"
-              ]
-            },
-            "language": {
-              "type": "string",
-              "enum": [
-                "Python",
-                "JavaScript",
-                "TypeScript",
-                "Java",
-                "CSharp",
-                "Go",
-                "Ruby",
-                "PHP"
-              ]
-            },
-            "keyLibraries": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "List of key backend libraries or packages."
-            }
-          }
+          "$ref": "#/definitions/backendSpecification"
         },
         "database": {
-          "type": "object",
-          "description": "Database technology choices.",
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "PostgreSQL",
-                "MySQL",
-                "SQLite",
-                "MongoDB",
-                "DynamoDB",
-                "Firebase Firestore",
-                "Redis",
-                "Elasticsearch",
-                "Cassandra",
-                "Neo4j",
-                "None",
-                "Other"
-              ]
-            },
-            "ormOdm": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "description": "e.g., SQLAlchemy, Prisma, TypeORM, Mongoose, Django ORM"
-            },
-            "hosting": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "description": "e.g., Self-hosted, AWS RDS, Azure SQL, GCP Cloud SQL, MongoDB Atlas"
-            }
-          }
+          "$ref": "#/definitions/databaseSpecification"
+        }
+      },
+      "additionalProperties": false
+    },
+    "infrastructureSpecification": {
+      "type": "object",
+      "description": "Details about the deployment infrastructure.",
+      "required": ["cloudProvider", "deploymentModel"],
+      "properties": {
+        "cloudProvider": {
+          "type": "string",
+          "enum": ["AWS", "GCP", "Azure", "DigitalOcean", "Vercel", "Netlify", "Heroku", "Self-hosted", "Hybrid", "None", "Other"],
+          "description": "Primary cloud provider."
         },
-        "deploymentPlatform": {
+        "deploymentModel": {
+          "type": "string",
+          "enum": ["serverless", "containerized", "virtual-machines", "paas", "bare-metal"],
+          "description": "Primary deployment model."
+        },
+        "containerization": {
           "type": "object",
-          "description": "Target deployment environment.",
           "properties": {
-            "target": {
-              "type": "string",
-              "enum": [
-                "docker-compose",
-                "kubernetes",
-                "aws-ecs",
-                "aws-lambda",
-                "google-cloud-run",
-                "azure-functions",
-                "vercel",
-                "netlify",
-                "heroku",
-                "bare-metal",
-                "other"
-              ]
+            "useDocker": {"type": "boolean", "default": true},
+            "orchestration": {
+              "type": ["string", "null"],
+              "enum": ["Kubernetes (EKS/GKE/AKS)", "Docker Swarm", "AWS ECS", "Nomad", "None", "Other"],
+              "description": "Container orchestration platform, if any."
             },
-            "ciCdTool": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "description": "e.g., GitHub Actions, Jenkins, GitLab CI"
+            "registry": {
+              "type": ["string", "null"],
+              "description": "e.g., Docker Hub, AWS ECR, GCP GCR, Azure ACR"
             }
+          },
+          "additionalProperties": false
+        },
+        "ciCdPipeline": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "enum": ["GitHub Actions", "GitLab CI", "Jenkins", "CircleCI", "Azure DevOps", "AWS CodePipeline", "Other"],
+              "description": "CI/CD automation tool."
+            },
+            "stages": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "e.g., build, test, deploy-staging, deploy-production"
+            }
+          },
+          "additionalProperties": false
+        },
+        "environmentVariables": {
+          "type": "array",
+          "description": "List of key environment variables needed, without their values.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "description": {"type": "string"},
+              "scope": {"type": "string", "enum": ["build-time", "run-time"]}
+            },
+            "required": ["name", "scope"],
+            "additionalProperties": false
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "dataModels": {
       "type": "array",
       "description": "Defines the data entities and their structures.",
       "items": {
-        "$ref": "#/definitions/dataModel"
+        "$ref": "#/definitions/databaseTableDefinition" 
       }
     },
     "apiEndpoints": {
@@ -234,12 +167,20 @@
         "$ref": "#/definitions/apiEndpoint"
       }
     },
-    "uiComponents": {
-      "type": "array",
-      "description": "For UI applications, defines key UI components or pages.",
-      "items": {
-        "$ref": "#/definitions/uiComponent"
-      }
+    "uiSpecification": {
+      "type": "object",
+      "description": "Detailed specification for UI applications.",
+      "properties": {
+        "pages": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/frontendPage" }
+        },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/frontendComponent" }
+        }
+      },
+      "additionalProperties": false
     },
     "agentServices": {
       "type": "array",
@@ -255,13 +196,108 @@
         "$ref": "#/definitions/workflowDefinition"
       }
     },
+    "aiAgentIntegration": {
+      "type": "object",
+      "description": "Details for integrating AI/LLM capabilities within the generated application itself.",
+      "properties": {
+        "llmProvider": {
+          "type": "string",
+          "enum": ["OpenAI", "Anthropic", "Google Gemini", "Ollama", "HuggingFace", "Azure OpenAI", "AWS Bedrock", "None", "Other"],
+          "description": "LLM provider for built-in AI features."
+        },
+        "modelId": {
+          "type": "string",
+          "description": "Specific LLM model ID (e.g., gpt-4, claude-3-opus, llama3)."
+        },
+        "agentTasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "taskName": {"type": "string"},
+              "description": {"type": "string"},
+              "promptTemplate": {"type": "string"},
+              "expectedOutputFormat": {"type": "string", "enum": ["text", "json", "code", "markdown"]}
+            },
+            "required": ["taskName", "description"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "blockchainWeb3Integration": {
+      "type": "object",
+      "description": "Details for blockchain or Web3 integration.",
+      "properties": {
+        "useBlockchain": {"type": "boolean", "default": false},
+        "network": {
+          "type": ["string", "null"],
+          "enum": ["Ethereum", "Polygon", "Solana", "Avalanche", "BNB Chain", "Arbitrum", "Optimism", "Other", "Private"],
+          "description": "Target blockchain network."
+        },
+        "smartContracts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/smartContractDetail" }
+        },
+        "walletIntegration": {
+          "type": ["string", "null"],
+          "enum": ["MetaMask", "WalletConnect", "Coinbase Wallet", "Phantom", "None", "Other"],
+          "description": "Wallet integration method or library."
+        },
+        "dAppFeatures": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "List of key DApp functionalities (e.g., token interaction, NFT minting)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "testingStrategy": {
+      "type": "object",
+      "description": "Approach for testing different aspects of the system.",
+      "properties": {
+        "unitTestFramework": {"type": "string", "description": "e.g., Jest, Pytest, JUnit, Go Test"},
+        "integrationTestFramework": {"type": "string", "description": "e.g., Supertest, Testcontainers, Spring Test"},
+        "e2eTestFramework": {"type": "string", "description": "e.g., Cypress, Playwright, Selenium"},
+        "performanceTestTool": {"type": ["string", "null"], "description": "e.g., K6, JMeter, Locust"},
+        "coverageGoals": {
+          "type": "object",
+          "properties": {
+            "unit": {"type": "integer", "minimum": 0, "maximum": 100},
+            "integration": {"type": "integer", "minimum": 0, "maximum": 100}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "documentationRequirements": {
+      "type": "object",
+      "description": "Specifications for project documentation.",
+      "properties": {
+        "apiDocsTool": {
+          "type": "string",
+          "enum": ["Swagger/OpenAPI UI", "Redoc", "Docusaurus", "MkDocs", "Sphinx", "None", "Other"],
+          "description": "Tool for generating/hosting API documentation."
+        },
+        "userManualStyle": {
+          "type": "string",
+          "enum": ["Markdown files", "Wiki (e.g., Confluence, GitHub Wiki)", "Dedicated Docs Site"],
+          "description": "Format or platform for user manuals."
+        },
+        "includeArchitectureDiagrams": {"type": "boolean", "default": true},
+        "autoGenerateChangelogs": {"type": "boolean", "default": true}
+      },
+      "additionalProperties": false
+    },
     "securityConsiderations": {
       "type": "object",
       "description": "Security-related requirements and design notes.",
       "properties": {
         "authentication": {
           "type": "string",
-          "description": "e.g., JWT, OAuth2, SAML, API Keys"
+          "description": "e.g., JWT, OAuth2, SAML, API Keys, WebAuthn"
         },
         "authorization": {
           "type": "string",
@@ -276,9 +312,14 @@
           "items": {
             "type": "string"
           },
-          "description": "e.g., GDPR, HIPAA, PCI-DSS"
+          "description": "e.g., GDPR, HIPAA, PCI-DSS, SOC2"
+        },
+        "threatModelConsiderations": {
+          "type": "string",
+          "description": "Key threats considered and mitigation strategies."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "scalabilityConsiderations": {
       "type": "object",
@@ -286,349 +327,410 @@
       "properties": {
         "expectedLoad": {
           "type": "string",
-          "description": "e.g., concurrent users, requests per second"
+          "description": "e.g., concurrent users, requests per second, data volume"
         },
         "scalingStrategy": {
           "type": "string",
-          "description": "e.g., Horizontal scaling, vertical scaling, auto-scaling groups, serverless auto-scaling"
+          "description": "e.g., Horizontal scaling, vertical scaling, auto-scaling groups, serverless auto-scaling, database read replicas"
+        },
+        "performanceTargets": {
+          "type": "string",
+          "description": "e.g., p95 latency < 200ms, uptime > 99.9%"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   "definitions": {
-    "dataModel": {
+    "frontendSpecification": {
       "type": "object",
-      "description": "A data entity.",
-      "required": [
-        "name",
-        "properties"
-      ],
+      "description": "Detailed frontend technology choices and structure.",
+      "required": ["framework", "language"],
       "properties": {
-        "name": {
+        "framework": {
           "type": "string",
-          "description": "Name of the data model/entity."
+          "enum": ["React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt.js", "Astro", "SolidJS", "Flutter", "React Native", "SwiftUI", "Jetpack Compose", "MAUI", "Electron", "Tauri", "None", "Other"],
+          "description": "Primary frontend framework/library."
         },
-        "description": {
-          "type": "string"
+        "language": {
+          "type": "string",
+          "enum": ["JavaScript", "TypeScript", "Dart", "Swift", "Kotlin", "CSharp", "Python", "Rust"],
+          "description": "Primary programming language for frontend."
         },
-        "properties": {
+        "uiLibrary": {
+          "type": ["string", "null"],
+          "enum": ["Tailwind CSS", "Material-UI (MUI)", "Chakra UI", "Bootstrap", "Ant Design", "Vuetify", "Shadcn/ui", "None", "Custom", "Other"],
+          "description": "Main UI component library or framework."
+        },
+        "stateManagement": {
+          "type": ["string", "null"],
+          "enum": ["Redux", "Zustand", "Pinia", "Vuex", "NgRx", "Context API + Hooks", "Riverpod (Flutter)", "Bloc (Flutter)", "None", "Other"],
+          "description": "State management solution."
+        },
+        "routing": {
+          "type": ["string", "null"],
+          "enum": ["React Router", "Vue Router", "Next.js Router", "Angular Router", "GoRouter (Flutter)", "None", "Other"],
+          "description": "Client-side or server-side routing library."
+        },
+        "keyLibraries": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of other key frontend libraries (e.g., axios, SWR, TanStack Query)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "backendSpecification": {
+      "type": "object",
+      "description": "Detailed backend technology choices and structure.",
+      "required": ["language", "framework"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "enum": ["Python", "JavaScript", "TypeScript", "Java", "CSharp", "Go", "Ruby", "PHP", "Rust", "Kotlin", "Scala"],
+          "description": "Primary programming language for backend."
+        },
+        "framework": {
+          "type": "string",
+          "enum": ["FastAPI", "Flask", "Django", "Express.js", "NestJS", "Koa.js", "Spring Boot", "Micronaut", "Quarkus", "Ruby on Rails", "Sinatra", "Go Gin", "Echo (Go)", "Fiber (Go)", "ASP.NET Core", "Actix-web (Rust)", "Axum (Rust)", "Laravel (PHP)", "Symfony (PHP)", "None", "Other"],
+          "description": "Primary backend framework."
+        },
+        "apiType": {
+          "type": "string",
+          "enum": ["REST", "GraphQL", "gRPC", "WebSocket", "Hybrid"],
+          "default": "REST",
+          "description": "Primary API paradigm."
+        },
+        "authenticationMethod": {
+          "type": ["string", "null"],
+          "enum": ["JWT", "OAuth 2.0", "Session-based", "API Keys", "OpenID Connect", "SAML", "None", "Other"],
+          "description": "Authentication mechanism."
+        },
+        "keyLibraries": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of other key backend libraries (e.g., Celery, Kafka clients, specific SDKs)."
+        },
+        "modules": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/backendModule" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseSpecification": {
+      "type": "object",
+      "description": "Detailed database technology choices and structure.",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["PostgreSQL", "MySQL", "MariaDB", "SQLite", "MongoDB", "DynamoDB", "Firebase Firestore", "Redis", "Elasticsearch", "Cassandra", "Neo4j", "InfluxDB", "TimescaleDB", "CockroachDB", "SurrealDB", "None", "Other"],
+          "description": "Primary database type."
+        },
+        "ormOdm": {
+          "type": ["string", "null"],
+          "enum": ["SQLAlchemy", "Prisma", "TypeORM", "Sequelize", "Mongoose", "Django ORM", "SQLModel", "PonyORM", "Peewee", "None", "Other"],
+          "description": "ORM or ODM library."
+        },
+        "hosting": {
+          "type": ["string", "null"],
+          "enum": ["Self-hosted", "AWS RDS", "Azure SQL Database", "GCP Cloud SQL", "MongoDB Atlas", "AWS DynamoDB", "Firebase", "DigitalOcean Managed DB", "Other Managed Service"],
+          "description": "Database hosting solution."
+        },
+        "schemaDefinitions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/databaseTableDefinition" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "databaseTableDefinition": {
+      "type": "object",
+      "description": "Definition of a database table or collection.",
+      "required": ["name", "columns"],
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "columns": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "name",
-              "type"
-            ],
+            "required": ["name", "type"],
             "properties": {
-              "name": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string",
-                "description": "e.g., string, integer, boolean, date, object, array, or another model name for FKs"
-              },
-              "isRequired": {
-                "type": "boolean",
-                "default": false
-              },
-              "isPrimaryKey": {
-                "type": "boolean",
-                "default": false
-              },
-              "isIndexed": {
-                "type": "boolean",
-                "default": false
-              },
-              "description": {
-                "type": "string"
-              },
-              "relation": {
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "properties": {
-                  "targetModel": {
-                    "type": "string"
-                  },
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "one-to-one",
-                      "one-to-many",
-                      "many-to-many"
-                    ]
-                  }
-                },
-                "required": [
-                  "targetModel",
-                  "type"
-                ]
-              }
-            }
+              "name": {"type": "string"},
+              "type": {"type": "string", "description": "e.g., VARCHAR(255), INTEGER, TEXT, BOOLEAN, TIMESTAMP, JSONB, UUID"},
+              "isPrimaryKey": {"type": "boolean", "default": false},
+              "isForeignKey": {"type": "boolean", "default": false},
+              "foreignKeyTable": {"type": ["string", "null"]},
+              "foreignKeyColumn": {"type": ["string", "null"]},
+              "isNullable": {"type": "boolean", "default": true},
+              "isUnique": {"type": "boolean", "default": false},
+              "isIndexed": {"type": "boolean", "default": false},
+              "defaultValue": {"type": ["string", "number", "boolean", "null"]},
+              "description": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "targetTable", "foreignKey"],
+            "properties": {
+              "type": {"type": "string", "enum": ["one-to-one", "one-to-many", "many-to-one", "many-to-many"]},
+              "targetTable": {"type": "string"},
+              "foreignKey": {"type": "string", "description": "Column name in this table that is the FK."},
+              "targetTableForeignKey": {"type": ["string", "null"], "description": "Column name in the target table (for many-to-many via join table, or if FK is on target)."},
+              "joinTable": {"type": ["string", "null"], "description": "Name of the join table for many-to-many relationships."}
+            },
+            "additionalProperties": false
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "apiEndpoint": {
       "type": "object",
-      "required": [
-        "path",
-        "method",
-        "summary"
-      ],
+      "required": ["path", "method", "summary"],
       "properties": {
-        "path": {
-          "type": "string",
-          "description": "e.g., /users/{id}"
+        "path": {"type": "string", "description": "e.g., /users/{id}"},
+        "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]},
+        "summary": {"type": "string"},
+        "description": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "requestBodySchema": {
+          "type": ["object", "string", "null"],
+          "description": "Reference to a dataModel/databaseTableDefinition or an inline JSON schema for the request body."
         },
-        "method": {
-          "type": "string",
-          "enum": [
-            "GET",
-            "POST",
-            "PUT",
-            "DELETE",
-            "PATCH",
-            "OPTIONS",
-            "HEAD"
-          ]
+        "responseBodySchema": {
+          "type": "object",
+          "description": "Map of status codes to response schemas.",
+          "additionalProperties": {
+            "type": ["object", "string", "null"],
+            "description": "Reference to a dataModel/databaseTableDefinition or an inline JSON schema."
+          }
         },
-        "summary": {
-          "type": "string",
-          "description": "Brief description of the endpoint."
+        "queryParameters": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/apiParameter" }
         },
-        "description": {
-          "type": "string"
+        "pathParameters": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/apiParameter" }
         },
-        "requestSchema": {
-          "type": [
-            "object",
-            "string"
-          ],
-          "description": "Reference to a dataModel definition or an inline schema for the request body."
+        "headerParameters": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/apiParameter" }
         },
-        "responseSchema": {
-          "type": [
-            "object",
-            "string"
-          ],
-          "description": "Reference to a dataModel definition or an inline schema for the response body (e.g., for 200 OK)."
-        },
-        "parameters": {
+        "authenticationRequired": {"type": "boolean", "default": false},
+        "permissions": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "apiParameter": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"type": "string", "enum": ["string", "number", "integer", "boolean", "array"]},
+        "format": {"type": ["string", "null"], "description": "e.g., uuid, date-time, int64"},
+        "description": {"type": "string"},
+        "required": {"type": "boolean", "default": false},
+        "example": {} 
+      },
+      "additionalProperties": false
+    },
+    "frontendPage": {
+      "type": "object",
+      "required": ["name", "routePath"],
+      "properties": {
+        "name": {"type": "string", "description": "e.g., UserDashboardPage, ProductListingPage"},
+        "routePath": {"type": "string", "description": "e.g., /dashboard, /products"},
+        "description": {"type": "string"},
+        "layout": {"type": ["string", "null"], "description": "Reference to a layout component name."},
+        "childComponents": {"type": "array", "items": {"type": "string"}, "description": "Names of key child components used on this page."},
+        "dataSources": {"type": "array", "items": {"type": "string"}, "description": "API endpoints or state stores it relies on."},
+        "userActions": {"type": "array", "items": {"type": "string"}, "description": "Key actions a user can perform on this page."}
+      },
+      "additionalProperties": false
+    },
+    "frontendComponent": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "description": "e.g., UserProfileCard, ProductGridItem"},
+        "description": {"type": "string"},
+        "props": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "name",
-              "in",
-              "schema"
-            ],
             "properties": {
-              "name": {
-                "type": "string"
-              },
-              "in": {
-                "type": "string",
-                "enum": [
-                  "query",
-                  "path",
-                  "header",
-                  "cookie"
-                ]
-              },
-              "schema": {
-                "type": "object"
-              },
-              "required": {
-                "type": "boolean",
-                "default": false
-              },
-              "description": {
-                "type": "string"
-              }
-            }
+              "name": {"type": "string"},
+              "type": {"type": "string"},
+              "isRequired": {"type": "boolean", "default": false}
+            },
+            "required": ["name", "type"]
           }
-        }
-      }
+        },
+        "emittedEvents": {"type": "array", "items": {"type": "string"}},
+        "dataSources": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
     },
-    "uiComponent": {
+    "backendModule": {
       "type": "object",
-      "required": [
-        "name",
-        "type"
-      ],
+      "required": ["name"],
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the UI component or page."
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "page",
-            "reusable-component",
-            "layout",
-            "widget"
-          ]
-        },
-        "description": {
-          "type": "string",
-          "description": "Purpose and functionality."
-        },
-        "userFlows": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Key user interactions or flows it's part of."
-        },
-        "dataSources": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Data models or API endpoints it interacts with."
-        },
-        "keyElements": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of important sub-elements or features within this component."
-        }
-      }
+        "name": {"type": "string", "description": "e.g., AuthenticationModule, OrderProcessingModule"},
+        "description": {"type": "string"},
+        "responsibilities": {"type": "array", "items": {"type": "string"}},
+        "keyClassesOrFunctions": {"type": "array", "items": {"type": "string"}},
+        "dependencies": {"type": "array", "items": {"type": "string"}, "description": "Other backend modules it depends on."}
+      },
+      "additionalProperties": false
     },
     "agentService": {
       "type": "object",
-      "required": [
-        "name",
-        "goal"
-      ],
+      "required": ["name", "goal"],
       "properties": {
-        "name": {
-          "type": "string",
-          "description": "Name of the AI agent service."
-        },
-        "description": {
-          "type": "string"
-        },
-        "goal": {
-          "type": "string",
-          "description": "Primary objective of this agent."
-        },
-        "triggers": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Events or conditions that activate this agent."
-        },
-        "inputs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "type"
-            ]
-          }
-        },
-        "outputs": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "type"
-            ]
-          }
-        },
-        "required_tools_ref": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "References to tools defined elsewhere or by name."
-        }
-      }
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "goal": {"type": "string"},
+        "triggers": {"type": "array", "items": {"type": "string"}},
+        "inputs": {"type": "array", "items": {"$ref": "#/definitions/agentIOParameter"}},
+        "outputs": {"type": "array", "items": {"$ref": "#/definitions/agentIOParameter"}},
+        "required_tools_ref": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "agentIOParameter": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"type": "string"},
+        "description": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "smartContractDetail": {
+      "type": "object",
+      "required": ["name", "language"],
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "language": {"type": "string", "enum": ["Solidity", "Vyper", "Rust (Ink!, Anchor)", "Move", "Other"]},
+        "keyFunctions": {"type": "array", "items": {"type": "string"}},
+        "stateVariables": {"type": "array", "items": {"type": "string"}},
+        "events": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
     },
     "workflowDefinition": {
       "type": "object",
-      "required": [
-        "name",
-        "steps"
-      ],
+      "required": ["name", "steps"],
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "trigger": {
-          "type": "string",
-          "description": "Event or condition that starts the workflow."
-        },
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "trigger": {"type": "string"},
         "steps": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "stepName",
-              "actor",
-              "actions"
-            ],
+            "required": ["stepName", "actor", "actions"],
             "properties": {
-              "stepName": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              },
-              "actor": {
-                "type": "string",
-                "description": "e.g., agent name, user role, system component"
-              },
-              "actions": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "outputs": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
+              "stepName": {"type": "string"},
+              "description": {"type": "string"},
+              "actor": {"type": "string"},
+              "actions": {"type": "array", "items": {"type": "string"}},
+              "outputs": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": false
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }
 ```
+
+**Summary of Key Changes and Additions:**
+
+*   **`projectMetadata`**: Added `projectName` (required) and `targetEnvironments`.
+*   **`technologyStack`**:
+    *   **`frontend`**: Changed to `$ref: "#/definitions/frontendSpecification"`.
+    *   **`backend`**: Changed to `$ref: "#/definitions/backendSpecification"`.
+    *   **`database`**: Changed to `$ref: "#/definitions/databaseSpecification"`.
+*   **`infrastructureSpecification`**: (Previously `deploymentPlatform`)
+    *   Renamed and expanded.
+    *   Added `cloudProvider` (enum), `deploymentModel` (enum).
+    *   Nested `containerization` object (Docker, orchestration, registry).
+    *   Nested `ciCdPipeline` object (tool, stages).
+    *   Nested `environmentVariables` array of objects.
+*   **`dataModels`**: Changed `items` to `$ref: "#/definitions/databaseTableDefinition"`.
+*   **`uiComponents`**: Renamed to `uiSpecification` and split into `pages` and `components` arrays, referencing new definitions.
+*   **New Top-Level Sections Added**:
+    *   **`aiAgentIntegration`**: With properties for `llmProvider` (enum), `modelId`, and an array of `agentTasks`.
+    *   **`blockchainWeb3Integration`**: With `useBlockchain` (boolean), `network` (enum), `smartContracts` (array referencing new definition), `walletIntegration` (enum), `dAppFeatures` (array).
+    *   **`testingStrategy`**: With `unitTestFramework`, `integrationTestFramework`, `e2eTestFramework`, `performanceTestTool`, and `coverageGoals` (object).
+    *   **`documentationRequirements`**: With `apiDocsTool` (enum), `userManualStyle` (enum), `includeArchitectureDiagrams` (boolean), `autoGenerateChangelogs` (boolean).
+*   **`securityConsiderations`**: Added `threatModelConsiderations`.
+*   **`scalabilityConsiderations`**: Added `performanceTargets`.
+*   **New Definitions (`definitions` section)**:
+    *   **`frontendSpecification`**: Detailed breakdown for frontend (framework, language, UI library, state management, routing, key libraries). Comprehensive enums added.
+    *   **`backendSpecification`**: Detailed breakdown for backend (language, framework, API type, auth method, key libraries, modules). Comprehensive enums added.
+    *   **`databaseSpecification`**: Detailed breakdown for database (type, ORM/ODM, hosting, schema definitions). Comprehensive enums added.
+    *   **`databaseTableDefinition`**: (Replaces old `dataModel` but more specific to DB tables/collections) Includes columns with detailed properties (type, PK, FK, nullable, unique, indexed, default) and a `relations` array.
+    *   **`apiEndpoint`**: Enhanced with `tags`, `requestBodySchema` (replaces `requestSchema`), `responseBodySchema` (map of status codes to schemas), and specific parameter types (`queryParameters`, `pathParameters`, `headerParameters`) referencing `apiParameter`.
+    *   **`apiParameter`**: New definition for API parameters.
+    *   **`frontendPage`**: New definition for UI pages.
+    *   **`frontendComponent`**: New definition for reusable UI components.
+    *   **`backendModule`**: New definition for backend modules/services.
+    *   **`agentService`**: `inputs` and `outputs` now reference `agentIOParameter`.
+    *   **`agentIOParameter`**: New definition for agent inputs/outputs.
+    *   **`smartContractDetail`**: New definition for blockchain smart contracts.
+    *   `workflowDefinition`: Kept largely the same but ensured `additionalProperties: false` for its nested objects.
+*   **`additionalProperties`**: Generally set to `false` for newly defined specific object types to enforce the schema structure, unless the section was intended for open-ended content (like the old generic `requestSchema`/`responseSchema` in `apiEndpoint`). The root properties like `technologyStack` also have `additionalProperties: false`.
+
+This updated schema is significantly more detailed and aligns with the comprehensive requirements of the "Transformational Directive." I have conceptually validated its structure and JSON syntax.The `system-blueprint.schema.json` was updated in the previous turn to incorporate the detailed requirements from the "Transformational Directive."
+
+**Summary of changes made in the previous turn (Turn 35):**
+
+1.  **Base Schema**: The schema from Turn 27 was used as a starting point.
+2.  **`projectMetadata`**: Enhanced with `projectName` (required) and `targetEnvironments` (enum).
+3.  **`technologyStack`**:
+    *   `frontend`, `backend`, and `database` properties were changed to reference new, more detailed definitions: `#/definitions/frontendSpecification`, `#/definitions/backendSpecification`, and `#/definitions/databaseSpecification` respectively.
+4.  **`infrastructureSpecification`**: (Formerly `deploymentPlatform`)
+    *   Significantly expanded with properties like `cloudProvider` (enum), `deploymentModel` (enum).
+    *   Nested objects for `containerization` (Docker, orchestration, registry) and `ciCdPipeline` (tool, stages).
+    *   An array for `environmentVariables` with structured objects.
+5.  **`dataModels`**: Items now reference `#/definitions/databaseTableDefinition` for more specific database schema definitions.
+6.  **`uiComponents`**: Renamed to `uiSpecification` and structured with `pages` (array of `#/definitions/frontendPage`) and `components` (array of `#/definitions/frontendComponent`).
+7.  **New Top-Level Sections Added**:
+    *   **`aiAgentIntegration`**: Includes `llmProvider` (enum), `modelId`, and an array of `agentTasks`.
+    *   **`blockchainWeb3Integration`**: Includes `useBlockchain` (boolean), `network` (enum), `smartContracts` (array referencing `#/definitions/smartContractDetail`), `walletIntegration` (enum), and `dAppFeatures`.
+    *   **`testingStrategy`**: Includes properties for `unitTestFramework`, `integrationTestFramework`, `e2eTestFramework`, `performanceTestTool`, and `coverageGoals`.
+    *   **`documentationRequirements`**: Includes `apiDocsTool` (enum), `userManualStyle` (enum), `includeArchitectureDiagrams`, and `autoGenerateChangelogs`.
+8.  **`securityConsiderations`**: Added `threatModelConsiderations`.
+9.  **`scalabilityConsiderations`**: Added `performanceTargets`.
+10. **New Definitions in `definitions`**:
+    *   **`frontendSpecification`**: Detailed object with comprehensive enums for framework, language, UI library, state management, and routing.
+    *   **`backendSpecification`**: Detailed object with comprehensive enums for language, framework, API type, and authentication method; also includes an array for `modules` referencing `#/definitions/backendModule`.
+    *   **`databaseSpecification`**: Detailed object with comprehensive enums for DB type, ORM/ODM, and hosting; includes `schemaDefinitions` array referencing `#/definitions/databaseTableDefinition`.
+    *   **`databaseTableDefinition`**: (Replaces the older, simpler `dataModel`) Defines DB tables/collections with columns (including properties like PK, FK, nullable, unique, indexed, default) and an explicit `relations` array.
+    *   **`apiEndpoint`**: Enhanced with `tags`, specific parameter types (`queryParameters`, `pathParameters`, `headerParameters` referencing `#/definitions/apiParameter`), `requestBodySchema`, and `responseBodySchema` (map of status codes to schemas).
+    *   **`apiParameter`**: New definition for API parameters (name, type, format, description, required, example).
+    *   **`frontendPage`**: New definition for UI pages (name, route, description, layout, child components, data sources, user actions).
+    *   **`frontendComponent`**: New definition for reusable UI components (name, description, props, emitted events, data sources).
+    *   **`backendModule`**: New definition for backend modules (name, description, responsibilities, key classes/functions, dependencies).
+    *   **`agentService`**: `inputs` and `outputs` now reference `#/definitions/agentIOParameter`.
+    *   **`agentIOParameter`**: New definition for structured agent inputs/outputs.
+    *   **`smartContractDetail`**: New definition for blockchain smart contracts (name, description, language, key functions, state variables, events).
+11. **`additionalProperties`**: Generally set to `false` for most new, specific object definitions to enforce the schema, while some (like schemas within API endpoints) might allow more flexibility if needed (though currently also set to false or not specified, which defaults to allowing additional properties depending on the schema validator's strictness settings).
+
+The schema is now significantly more detailed and aligned with the comprehensive requirements of the user's "Transformational Directive."
+
+No further file modifications were requested in this subtask beyond outputting the schema content, which was done in the previous turn.
