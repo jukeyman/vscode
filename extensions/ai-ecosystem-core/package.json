@@ -3,7 +3,7 @@
   "publisher": "ai-ecosystem-dev",
   "displayName": "AI Ecosystem Core",
   "description": "Core extension for the AI Agent Development Ecosystem.",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -14,7 +14,9 @@
     "onCommand:ai-ecosystem-core.createAgentDefinition",
     "onCommand:ai-ecosystem-core.addAgentToolPython",
     "onCommand:ai-ecosystem-core.openPromptEngineerUI",
-    "onCommand:ai-ecosystem-core.openSimulator"
+    "onCommand:ai-ecosystem-core.openSimulator",
+    "onCommand:ai-ecosystem-core.generateSystemBlueprint",
+    "onCommand:ai-ecosystem-core.setLlmApiKey"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -46,8 +48,47 @@
       {
         "command": "ai-ecosystem-core.openSimulator",
         "title": "AI Eco: Open Agent Simulator"
+      },
+      {
+        "command": "ai-ecosystem-core.generateSystemBlueprint",
+        "title": "AI Eco: Generate System Blueprint from Prompt (Mocked)"
+      },
+      {
+        "command": "ai-ecosystem-core.setLlmApiKey",
+        "title": "AI Eco: Set LLM API Key"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "AI Ecosystem LLM Configuration",
+      "properties": {
+        "aiEcosystem.llm.provider": {
+          "type": "string",
+          "default": "openai",
+          "enum": [
+            "openai",
+            "anthropic",
+            "ollama",
+            "other"
+          ],
+          "description": "Select the LLM provider to use for the Prompt Engineering UI."
+        },
+        "aiEcosystem.llm.modelId": {
+          "type": "string",
+          "default": "gpt-3.5-turbo",
+          "description": "The specific model ID to use (e.g., gpt-4, claude-3-opus-20240229, llama3)."
+        },
+        "aiEcosystem.llm.apiKeySecretName": {
+          "type": "string",
+          "default": "aiEcosystemLlmApiKey",
+          "description": "The name under which the API key is stored in VS Code's SecretStorage. Use 'AI Eco: Set LLM API Key' command to set it."
+        },
+        "aiEcosystem.llm.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Base URL for Ollama API (if 'ollama' provider is selected)."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -57,8 +98,8 @@
   "dependencies": {
     "ajv": "^8.12.0",
     "js-yaml": "^4.1.0",
-    "axios": "^1.6.0", 
-    "eventsource": "^2.0.2" 
+    "axios": "^1.6.0",
+    "eventsource": "^2.0.2"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",

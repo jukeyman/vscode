@@ -1,0 +1,634 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "System Blueprint",
+  "description": "A comprehensive blueprint describing a software system, including its architecture, components, data models, APIs, and UI elements. Used as a specification for AI-driven generation.",
+  "type": "object",
+  "required": [
+    "metadata",
+    "applicationType",
+    "technologyStack"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Information about the blueprint itself.",
+      "required": [
+        "blueprintName",
+        "blueprintVersion"
+      ],
+      "properties": {
+        "blueprintName": {
+          "type": "string",
+          "description": "Name of the system or application being blueprinted."
+        },
+        "blueprintVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+.*$",
+          "description": "Version of this blueprint document (e.g., 1.0.0)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the system."
+        },
+        "author": {
+          "type": "string",
+          "description": "Author or generating agent of this blueprint."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of blueprint creation."
+        }
+      }
+    },
+    "applicationType": {
+      "type": "string",
+      "description": "The general type of application to be built.",
+      "enum": [
+        "web-application",
+        "mobile-application",
+        "api-service",
+        "cli-tool",
+        "agent-service",
+        "desktop-application",
+        "iot-system",
+        "data-pipeline",
+        "other"
+      ]
+    },
+    "technologyStack": {
+      "type": "object",
+      "description": "Defines the core technologies to be used.",
+      "properties": {
+        "frontend": {
+          "type": "object",
+          "description": "Frontend technology choices.",
+          "properties": {
+            "framework": {
+              "type": "string",
+              "description": "e.g., React, Vue, Angular, Svelte, Next.js, Flutter (for mobile/desktop)",
+              "enum": [
+                "React",
+                "Vue",
+                "Angular",
+                "Svelte",
+                "Next.js",
+                "Nuxt.js",
+                "Flutter",
+                "React Native",
+                "SwiftUI",
+                "Jetpack Compose",
+                "MAUI",
+                "Electron",
+                "None",
+                "Other"
+              ]
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "JavaScript",
+                "TypeScript",
+                "Dart",
+                "Swift",
+                "Kotlin",
+                "CSharp",
+                "Python"
+              ]
+            },
+            "styling": {
+              "type": "string",
+              "description": "e.g., Tailwind CSS, Material UI, Bootstrap, CSS Modules, Styled Components"
+            },
+            "keyLibraries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of key frontend libraries or packages."
+            }
+          }
+        },
+        "backend": {
+          "type": "object",
+          "description": "Backend technology choices.",
+          "properties": {
+            "framework": {
+              "type": "string",
+              "description": "e.g., FastAPI, Express, NestJS, Spring Boot, Django, Ruby on Rails, Go Gin",
+              "enum": [
+                "FastAPI",
+                "Flask",
+                "Django",
+                "Express.js",
+                "NestJS",
+                "Spring Boot",
+                "Ruby on Rails",
+                "Go Gin",
+                "ASP.NET Core",
+                "None",
+                "Other"
+              ]
+            },
+            "language": {
+              "type": "string",
+              "enum": [
+                "Python",
+                "JavaScript",
+                "TypeScript",
+                "Java",
+                "CSharp",
+                "Go",
+                "Ruby",
+                "PHP"
+              ]
+            },
+            "keyLibraries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of key backend libraries or packages."
+            }
+          }
+        },
+        "database": {
+          "type": "object",
+          "description": "Database technology choices.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "PostgreSQL",
+                "MySQL",
+                "SQLite",
+                "MongoDB",
+                "DynamoDB",
+                "Firebase Firestore",
+                "Redis",
+                "Elasticsearch",
+                "Cassandra",
+                "Neo4j",
+                "None",
+                "Other"
+              ]
+            },
+            "ormOdm": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "e.g., SQLAlchemy, Prisma, TypeORM, Mongoose, Django ORM"
+            },
+            "hosting": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "e.g., Self-hosted, AWS RDS, Azure SQL, GCP Cloud SQL, MongoDB Atlas"
+            }
+          }
+        },
+        "deploymentPlatform": {
+          "type": "object",
+          "description": "Target deployment environment.",
+          "properties": {
+            "target": {
+              "type": "string",
+              "enum": [
+                "docker-compose",
+                "kubernetes",
+                "aws-ecs",
+                "aws-lambda",
+                "google-cloud-run",
+                "azure-functions",
+                "vercel",
+                "netlify",
+                "heroku",
+                "bare-metal",
+                "other"
+              ]
+            },
+            "ciCdTool": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "e.g., GitHub Actions, Jenkins, GitLab CI"
+            }
+          }
+        }
+      }
+    },
+    "dataModels": {
+      "type": "array",
+      "description": "Defines the data entities and their structures.",
+      "items": {
+        "$ref": "#/definitions/dataModel"
+      }
+    },
+    "apiEndpoints": {
+      "type": "array",
+      "description": "For services, defines the API endpoints.",
+      "items": {
+        "$ref": "#/definitions/apiEndpoint"
+      }
+    },
+    "uiComponents": {
+      "type": "array",
+      "description": "For UI applications, defines key UI components or pages.",
+      "items": {
+        "$ref": "#/definitions/uiComponent"
+      }
+    },
+    "agentServices": {
+      "type": "array",
+      "description": "For systems involving AI agents, defines individual agent services.",
+      "items": {
+        "$ref": "#/definitions/agentService"
+      }
+    },
+    "workflowsAutomations": {
+      "type": "array",
+      "description": "Descriptions of key automated business processes or agentic workflows.",
+      "items": {
+        "$ref": "#/definitions/workflowDefinition"
+      }
+    },
+    "securityConsiderations": {
+      "type": "object",
+      "description": "Security-related requirements and design notes.",
+      "properties": {
+        "authentication": {
+          "type": "string",
+          "description": "e.g., JWT, OAuth2, SAML, API Keys"
+        },
+        "authorization": {
+          "type": "string",
+          "description": "e.g., Role-Based Access Control (RBAC), Attribute-Based Access Control (ABAC)"
+        },
+        "dataEncryption": {
+          "type": "string",
+          "description": "Notes on data at rest and in transit encryption."
+        },
+        "complianceRequirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "e.g., GDPR, HIPAA, PCI-DSS"
+        }
+      }
+    },
+    "scalabilityConsiderations": {
+      "type": "object",
+      "description": "Notes on expected scale and scalability features.",
+      "properties": {
+        "expectedLoad": {
+          "type": "string",
+          "description": "e.g., concurrent users, requests per second"
+        },
+        "scalingStrategy": {
+          "type": "string",
+          "description": "e.g., Horizontal scaling, vertical scaling, auto-scaling groups, serverless auto-scaling"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "dataModel": {
+      "type": "object",
+      "description": "A data entity.",
+      "required": [
+        "name",
+        "properties"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the data model/entity."
+        },
+        "description": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "description": "e.g., string, integer, boolean, date, object, array, or another model name for FKs"
+              },
+              "isRequired": {
+                "type": "boolean",
+                "default": false
+              },
+              "isPrimaryKey": {
+                "type": "boolean",
+                "default": false
+              },
+              "isIndexed": {
+                "type": "boolean",
+                "default": false
+              },
+              "description": {
+                "type": "string"
+              },
+              "relation": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "targetModel": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "one-to-one",
+                      "one-to-many",
+                      "many-to-many"
+                    ]
+                  }
+                },
+                "required": [
+                  "targetModel",
+                  "type"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "apiEndpoint": {
+      "type": "object",
+      "required": [
+        "path",
+        "method",
+        "summary"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "e.g., /users/{id}"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "PATCH",
+            "OPTIONS",
+            "HEAD"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief description of the endpoint."
+        },
+        "description": {
+          "type": "string"
+        },
+        "requestSchema": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "description": "Reference to a dataModel definition or an inline schema for the request body."
+        },
+        "responseSchema": {
+          "type": [
+            "object",
+            "string"
+          ],
+          "description": "Reference to a dataModel definition or an inline schema for the response body (e.g., for 200 OK)."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "in",
+              "schema"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "in": {
+                "type": "string",
+                "enum": [
+                  "query",
+                  "path",
+                  "header",
+                  "cookie"
+                ]
+              },
+              "schema": {
+                "type": "object"
+              },
+              "required": {
+                "type": "boolean",
+                "default": false
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "uiComponent": {
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the UI component or page."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "page",
+            "reusable-component",
+            "layout",
+            "widget"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "description": "Purpose and functionality."
+        },
+        "userFlows": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Key user interactions or flows it's part of."
+        },
+        "dataSources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Data models or API endpoints it interacts with."
+        },
+        "keyElements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of important sub-elements or features within this component."
+        }
+      }
+    },
+    "agentService": {
+      "type": "object",
+      "required": [
+        "name",
+        "goal"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the AI agent service."
+        },
+        "description": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "string",
+          "description": "Primary objective of this agent."
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Events or conditions that activate this agent."
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ]
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "type"
+            ]
+          }
+        },
+        "required_tools_ref": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "References to tools defined elsewhere or by name."
+        }
+      }
+    },
+    "workflowDefinition": {
+      "type": "object",
+      "required": [
+        "name",
+        "steps"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string",
+          "description": "Event or condition that starts the workflow."
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "stepName",
+              "actor",
+              "actions"
+            ],
+            "properties": {
+              "stepName": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "actor": {
+                "type": "string",
+                "description": "e.g., agent name, user role, system component"
+              },
+              "actions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "outputs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```

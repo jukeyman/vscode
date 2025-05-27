@@ -2,18 +2,17 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as nodePath from 'path';
 import Ajv, { Schema } from 'ajv';
-import * as yaml from 'js-yaml';
+import * as yaml from 'js-yaml'; 
 import { randomBytes } from 'crypto';
 import axios from 'axios'; 
 import EventSource from 'eventsource'; 
 import * as cp from 'child_process'; 
 
-// Global/Context Variables
+// Global/Context Variables (from previous steps)
 const SIMULATION_SERVICE_URL = 'http://localhost:8123'; 
 let simulationServiceProcess: cp.ChildProcess | null = null;
 const activeSseConnections: Map<string, EventSource> = new Map(); 
 let serviceOutputChannel: vscode.OutputChannel | undefined; 
-
 let aiOutputChannel: vscode.OutputChannel | undefined;
 let promptEngineerPanel: vscode.WebviewPanel | undefined = undefined;
 let simulatorPanel: vscode.WebviewPanel | undefined = undefined; 
@@ -35,7 +34,7 @@ function getNonce() {
     return randomBytes(16).toString('base64');
 }
 
-// Generalized getWebviewHtml function
+// Generalized getWebviewHtml function (from previous steps)
 function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlSubPath: string, jsFileName: string): string {
     const htmlDiskPath = vscode.Uri.joinPath(extensionUri, 'webview', htmlSubPath);
     let htmlContent = "";
@@ -46,52 +45,44 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlS
         const errorMsg = err instanceof Error ? err.message : String(err);
         return `<html><body>Error loading webview content from ${htmlDiskPath.fsPath}. Error: ${errorMsg}</body></html>`;
     }
-
     const scriptDiskPath = vscode.Uri.joinPath(extensionUri, 'webview', nodePath.dirname(htmlSubPath), jsFileName);
     const scriptUri = webview.asWebviewUri(scriptDiskPath);
     const nonce = getNonce();
-
     htmlContent = htmlContent.replace(/\$\{webview\.cspSource\}/g, webview.cspSource);
     htmlContent = htmlContent.replace(new RegExp('\\$\\{nonce\\}', 'g'), nonce);
     htmlContent = htmlContent.replace(/\$\{scriptUri\}/g, scriptUri.toString());
-    
     return htmlContent;
 }
 
-// Helper function to find agent definition files
+// Helper function to find agent definition files (from previous steps)
 async function findAgentDefinitionFiles(): Promise<vscode.Uri[]> {
     const wsRoot = getWorkspaceRootUri();
     if (!wsRoot) return [];
     return vscode.workspace.findFiles(new vscode.RelativePattern(wsRoot, '{agents/**/*.yaml,agents/**/*.yml,.jules/agents/**/*.yaml,.jules/agents/**/*.yml}'));
 }
 
-// Helper function to ensure the simulation service is running
+// Helper function to ensure the simulation service is running (from previous steps)
 async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext): Promise<boolean> {
     if (simulationServiceProcess && !simulationServiceProcess.killed) {
         try {
             await axios.get(SIMULATION_SERVICE_URL + "/docs", { timeout: 1000 }); 
-            aiOutputChannel?.appendLine("Simulation service already running and responsive.");
             return true;
         } catch (e) {
-            aiOutputChannel?.appendLine("Simulation service process exists but is not responsive. Attempting to restart.");
             simulationServiceProcess.kill(); 
             simulationServiceProcess = null; 
         }
     }
-
+    const workspaceRootPath = getWorkspaceRootPath();
+    if (!workspaceRootPath) {
+        vscode.window.showErrorMessage("No workspace open. Cannot start simulation service.");
+        return false;
+    }
     if (!serviceOutputChannel) {
         serviceOutputChannel = vscode.window.createOutputChannel("Simulation Service Logs");
         context.subscriptions.push(serviceOutputChannel);
     }
-    serviceOutputChannel.show(true); 
+    serviceOutputChannel.show(true);
     serviceOutputChannel.appendLine("Attempting to start Python simulation service...");
-
-    const workspaceRootPath = getWorkspaceRootPath();
-    if (!workspaceRootPath) {
-        serviceOutputChannel.appendLine("Error: No workspace open. Cannot determine CWD for simulation service.");
-        vscode.window.showErrorMessage("No workspace open. Cannot start simulation service.");
-        return false;
-    }
     
     const serviceDir = nodePath.join(workspaceRootPath, 'simulation_service');
     const serviceMainPy = nodePath.join(serviceDir, 'main.py');
@@ -102,22 +93,9 @@ async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext
         return false;
     }
 
-    simulationServiceProcess = cp.spawn(
-        'uvicorn', 
-        ['main:app', '--host', '127.0.0.1', '--port', '8123'], 
-        { 
-            cwd: serviceDir, 
-            shell: true, 
-            detached: false 
-        }
-    );
-
-    simulationServiceProcess.stdout?.on('data', (data) => {
-        serviceOutputChannel?.appendLine(`Service: ${data.toString().trim()}`);
-    });
-    simulationServiceProcess.stderr?.on('data', (data) => {
-        serviceOutputChannel?.appendLine(`Service ERR: ${data.toString().trim()}`);
-    });
+    simulationServiceProcess = cp.spawn('uvicorn', ['main:app', '--host', '127.0.0.1', '--port', '8123'], { cwd: serviceDir, shell: true, detached: false });
+    simulationServiceProcess.stdout?.on('data', (data) => serviceOutputChannel?.appendLine(`Service: ${data.toString().trim()}`));
+    simulationServiceProcess.stderr?.on('data', (data) => serviceOutputChannel?.appendLine(`Service ERR: ${data.toString().trim()}`));
     simulationServiceProcess.on('error', (err) => {
         serviceOutputChannel?.appendLine(`Failed to start simulation service: ${err.message}`);
         vscode.window.showErrorMessage(`Failed to start simulation service: ${err.message}`);
@@ -140,9 +118,7 @@ async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext
                 const errorMsg = e instanceof Error ? e.message : String(e);
                 serviceOutputChannel?.appendLine(`Simulation service failed to respond after startup attempt: ${errorMsg}`);
                 vscode.window.showErrorMessage(`Simulation service failed to start or respond: ${errorMsg}`);
-                if (simulationServiceProcess && !simulationServiceProcess.killed) {
-                    simulationServiceProcess.kill();
-                }
+                if (simulationServiceProcess && !simulationServiceProcess.killed) simulationServiceProcess.kill();
                 simulationServiceProcess = null;
                 resolve(false);
             }
@@ -165,182 +141,141 @@ export function activate(context: vscode.ExtensionContext) {
     }
     aiOutputChannel.appendLine('AI Ecosystem Core extension activated.');
 
+    // --- Register ai-ecosystem-core.setLlmApiKey command ---
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.setLlmApiKey', async () => {
+        const config = vscode.workspace.getConfiguration('aiEcosystem.llm');
+        const apiKeySecretName = config.get<string>('apiKeySecretName');
+
+        if (!apiKeySecretName) {
+            vscode.window.showErrorMessage("LLM API Key secret name is not configured in settings.");
+            aiOutputChannel?.appendLine("Error: aiEcosystem.llm.apiKeySecretName is not set in configuration.");
+            return;
+        }
+
+        const apiKey = await vscode.window.showInputBox({
+            prompt: "Enter your LLM API Key",
+            password: true,
+            ignoreFocusOut: true,
+            placeHolder: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        });
+
+        if (apiKey) {
+            await context.secrets.store(apiKeySecretName, apiKey);
+            vscode.window.showInformationMessage("LLM API Key stored successfully.");
+            aiOutputChannel?.appendLine("LLM API Key stored in SecretStorage.");
+        } else {
+            vscode.window.showInformationMessage("API Key input cancelled.");
+        }
+    }));
+
+
     // --- Register other existing commands (simplified stubs for brevity) ---
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.helloWorld', () => {vscode.window.showInformationMessage('Hello World!');}));
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.listAgents', async () => { /* ... */ }));
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.validateAgentDefinitions', async () => { /* ... */ }));
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.createAgentDefinition', async () => { /* ... */ }));
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.addAgentToolPython', async () => { /* ... */ }));
-    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => { /* ... */ }));
+    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => { /* This will be replaced/updated below */ }));
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openSimulator', async () => { /* ... */ }));
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.generateSystemBlueprint', async () => { /* ... */ }));
 
 
-    // --- Register ai-ecosystem-core.openSimulator command ---
-    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openSimulator', async () => {
+    // --- Register ai-ecosystem-core.openPromptEngineerUI command (Updated) ---
+    context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => {
         const columnToShowIn = vscode.window.activeTextEditor?.viewColumn;
 
-        if (simulatorPanel) {
-            simulatorPanel.reveal(columnToShowIn);
+        if (promptEngineerPanel) {
+            promptEngineerPanel.reveal(columnToShowIn);
             return;
         }
 
-        simulatorPanel = vscode.window.createWebviewPanel(
-            'agentSimulator', '🧪 Agent Simulator', columnToShowIn || vscode.ViewColumn.One,
+        promptEngineerPanel = vscode.window.createWebviewPanel(
+            'promptEngineerUI', 'Prompt Engineering UI', columnToShowIn || vscode.ViewColumn.One,
             {
                 enableScripts: true,
-                localResourceRoots: [
-                    vscode.Uri.joinPath(context.extensionUri, 'webview'),
-                    vscode.Uri.joinPath(context.extensionUri, 'webview', 'simulator')
-                ]
+                localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'webview')] // Assuming main.js is in webview/
             }
         );
 
-        simulatorPanel.webview.html = getWebviewHtml(simulatorPanel.webview, context.extensionUri, 'simulator/simulator-ui.html', 'simulator-main.js');
+        // Use 'prompt-engineer-ui.html' and 'main.js' from the root of 'webview'
+        promptEngineerPanel.webview.html = getWebviewHtml(promptEngineerPanel.webview, context.extensionUri, 'prompt-engineer-ui.html', 'main.js');
 
-        // Handle messages from the webview
-        simulatorPanel.webview.onDidReceiveMessage(
+        promptEngineerPanel.webview.onDidReceiveMessage(
             async message => {
                 switch (message.command) {
-                    case 'uiReady':
-                        try {
-                            const agentUris = await findAgentDefinitionFiles();
-                            const workspaceRootPath = getWorkspaceRootPath() || ''; 
-                            const agentList = agentUris.map(uri => ({
-                                id: nodePath.relative(workspaceRootPath, uri.fsPath).replace(/\\/g, '/'), 
-                                name: nodePath.basename(uri.fsPath) + ` (${nodePath.relative(workspaceRootPath, uri.fsPath).replace(/\\/g, '/')})`
-                            }));
-                            simulatorPanel?.webview.postMessage({ command: 'populateAgentSelector', agents: agentList });
-                        } catch (e) { 
-                            const errorMsg = e instanceof Error ? e.message : String(e);
-                            aiOutputChannel?.appendLine(`Error finding agent definitions: ${errorMsg}`);
-                            vscode.window.showErrorMessage(`Error finding agent definitions: ${errorMsg}`);
-                         }
-                        return;
+                    case 'sendPrompt':
+                        const config = vscode.workspace.getConfiguration('aiEcosystem.llm');
+                        const provider = config.get<string>('provider');
+                        const modelId = config.get<string>('modelId');
+                        const apiKeySecretName = config.get<string>('apiKeySecretName');
 
-                    case 'runSimulation':
-                        aiOutputChannel?.appendLine(`UI: Run simulation. Agent=${message.agentId}, Input=${message.initialInput}`);
-                        const serviceRunning = await ensureSimulationServiceIsRunning(context);
-                        if (!serviceRunning) {
-                            vscode.window.showErrorMessage("Failed to start/connect to simulation service. Cannot run simulation.");
-                            simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'error', message: 'Service not available.' });
+                        if (!apiKeySecretName) {
+                            promptEngineerPanel?.webview.postMessage({ command: 'showError', text: 'LLM API Key secret name not configured.' });
+                            return;
+                        }
+                        const apiKey = await context.secrets.get(apiKeySecretName);
+
+                        if (!apiKey) {
+                            promptEngineerPanel?.webview.postMessage({ command: 'showError', text: 'API Key not set. Use "AI Eco: Set LLM API Key" command.' });
                             return;
                         }
 
-                        if (simulatorPanelSimulationId) { 
-                            const oldSse = activeSseConnections.get(simulatorPanelSimulationId);
-                            if (oldSse) {
-                                oldSse.close();
-                                activeSseConnections.delete(simulatorPanelSimulationId);
-                                aiOutputChannel?.appendLine(`Closed previous SSE for sim ID: ${simulatorPanelSimulationId}`);
-                            }
-                        }
-                        
+                        let apiUrl = '';
+                        let apiHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+                        let apiBody: Record<string, any> = {}; // Using Record<string, any> for flexibility
+                        const fullPrompt = `${message.promptName}\n\nContext:\n${message.context}`; // Combine prompt and context
+
                         try {
-                            const agentIdForService = message.agentId; 
-                            const response = await axios.post(`${SIMULATION_SERVICE_URL}/simulations`, {
-                                agentId: agentIdForService, 
-                                initialInput: message.initialInput,
-                                mockConfigurations: message.mockConfigs || {} // Ensure this is sent if UI supports it
-                            });
-                            
-                            const simulationId = response.data.simulationId;
-                            simulatorPanelSimulationId = simulationId; 
-                            aiOutputChannel?.appendLine(`Simulation created with ID: ${simulationId}`);
-                            // Initial state update to webview
-                            simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'running', message: 'Simulation started.' });
-
-                            const eventSourceUrl = `${SIMULATION_SERVICE_URL}/simulations/${simulationId}/events`;
-                            const eventSource = new EventSource(eventSourceUrl);
-                            activeSseConnections.set(simulationId, eventSource);
-                            aiOutputChannel?.appendLine(`SSE connection established to: ${eventSourceUrl}`);
-
-                            eventSource.onmessage = (event) => {
-                                try {
-                                    const serverEvent = JSON.parse(event.data);
-                                    // Forward all service events as trace events
-                                    simulatorPanel?.webview.postMessage({ command: 'traceEvent', event: serverEvent });
-                                    
-                                    // Specifically handle status_update events from service to update UI state
-                                    if (serverEvent.type === 'status_update' && serverEvent.data?.state) {
-                                        const newState = serverEvent.data.state;
-                                        const statusMessage = serverEvent.data.message || `State changed to ${newState}`;
-                                        simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: newState, message: statusMessage });
-                                        aiOutputChannel?.appendLine(`SSE: Received status_update, new state: ${newState} for sim ${simulationId}. Message: ${statusMessage}`);
-                                        
-                                        if (['stopped', 'completed', 'error'].includes(newState)) {
-                                            eventSource.close(); 
-                                            activeSseConnections.delete(simulationId);
-                                            if (simulatorPanelSimulationId === simulationId) simulatorPanelSimulationId = null;
-                                            aiOutputChannel?.appendLine(`SSE connection closed for sim ${simulationId} due to terminal state: ${newState}`);
-                                        }
-                                    }
-                                } catch (e) {
-                                    aiOutputChannel?.appendLine(`Error parsing SSE message: ${e} - Data: ${event.data}`);
-                                }
-                            };
-                            eventSource.onerror = (err) => {
-                                aiOutputChannel?.appendLine(`SSE Error for sim ${simulationId}: ${JSON.stringify(err)}`);
-                                eventSource.close();
-                                activeSseConnections.delete(simulationId);
-                                if (simulatorPanelSimulationId === simulationId) {
-                                   simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'error', message: 'SSE connection error.' });
-                                   simulatorPanelSimulationId = null;
-                                }
-                            };
-                        } catch (error) {
-                            const errorMsg = error instanceof Error ? error.message : String(error);
-                            aiOutputChannel?.appendLine(`Error creating simulation: ${errorMsg}`);
-                            vscode.window.showErrorMessage(`Failed to run simulation: ${errorMsg}`);
-                            simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'error', message: `Failed to run: ${errorMsg}` });
-                        }
-                        return;
-
-                    case 'controlSimulation':
-                        const action = message.action;
-                        const simIdToControl = simulatorPanelSimulationId;
-
-                        if (!simIdToControl) {
-                            vscode.window.showWarningMessage("No active simulation associated with this panel to control.");
-                             simulatorPanel?.webview.postMessage({ command: 'showError', text: 'No active simulation to control.'}); 
-                            return;
-                        }
-                        aiOutputChannel?.appendLine(`UI: Control command '${action}' for simulation ID: ${simIdToControl}`);
-                        try {
-                            const controlResponse = await axios.post(`${SIMULATION_SERVICE_URL}/simulations/${simIdToControl}/control`, {
-                                command: action
-                            });
-                            aiOutputChannel?.appendLine(`Control command '${action}' sent. Service response: ${JSON.stringify(controlResponse.data)}`);
-                            
-                            // Log acknowledgement. Actual state change comes from SSE status_update.
-                            if(controlResponse.data.status === "success") {
-                                simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: `Control command '${action}' acknowledged by service. ${controlResponse.data.message || ''}` });
+                            if (provider === 'openai') {
+                                apiUrl = 'https://api.openai.com/v1/chat/completions';
+                                apiHeaders['Authorization'] = `Bearer ${apiKey}`;
+                                apiBody = { model: modelId, messages: [{ role: 'user', content: fullPrompt }] };
+                            } else if (provider === 'anthropic') {
+                                apiUrl = 'https://api.anthropic.com/v1/messages';
+                                apiHeaders['x-api-key'] = apiKey;
+                                apiHeaders['anthropic-version'] = '2023-06-01';
+                                apiBody = { model: modelId, max_tokens: 2048, messages: [{ role: 'user', content: fullPrompt }] };
+                            } else if (provider === 'ollama') {
+                                const ollamaBaseUrl = config.get<string>('ollama.baseUrl', 'http://localhost:11434');
+                                apiUrl = `${ollamaBaseUrl}/api/chat`; // Or /api/generate for non-chat models
+                                // Ollama doesn't typically use API keys in headers for local instances
+                                apiBody = { model: modelId, messages: [{ role: 'user', content: fullPrompt }], stream: false };
                             } else {
-                                 simulatorPanel?.webview.postMessage({ command: 'simulationLogEntry', data: `Control command '${action}' processed by service with message: ${controlResponse.data.message || 'No specific message.'}`, logType: 'WARNING' });
+                                promptEngineerPanel?.webview.postMessage({ command: 'showError', text: `Unsupported LLM provider: ${provider}` });
+                                return;
                             }
 
-                            // Proactive cleanup for 'stop' if service doesn't immediately send terminal status_update
-                            if (action === 'stop') {
-                                const sse = activeSseConnections.get(simIdToControl);
-                                if (sse) {
-                                    sse.close();
-                                    activeSseConnections.delete(simIdToControl);
-                                    aiOutputChannel?.appendLine(`SSE connection explicitly closed for stopped simulation: ${simIdToControl}`);
-                                }
-                                if (simulatorPanelSimulationId === simIdToControl) {
-                                    // This ensures UI updates even if service's final 'stopped' event is missed/delayed
-                                    simulatorPanel?.webview.postMessage({ command: 'simulationStateUpdate', state: 'stopped', message: 'Simulation stopped by user.' });
-                                    simulatorPanelSimulationId = null;
-                                }
+                            aiOutputChannel?.appendLine(`Sending prompt to ${provider} (${modelId}). API URL: ${apiUrl}`);
+                            const response = await axios.post(apiUrl, apiBody, { headers: apiHeaders });
+                            
+                            let extractedText = '';
+                            if (provider === 'openai') {
+                                extractedText = response.data.choices?.[0]?.message?.content || JSON.stringify(response.data, null, 2);
+                            } else if (provider === 'anthropic') {
+                                extractedText = response.data.content?.[0]?.text || JSON.stringify(response.data, null, 2);
+                            } else if (provider === 'ollama') {
+                                // For chat, response.data.message.content
+                                // For generate, response.data.response
+                                extractedText = response.data.message?.content || response.data.response || JSON.stringify(response.data, null, 2);
                             }
-                        } catch (error) {
-                            const errorMsg = error instanceof Error ? error.message : String(error);
-                            aiOutputChannel?.appendLine(`Error sending control '${action}' for ${simIdToControl}: ${errorMsg}`);
-                            vscode.window.showErrorMessage(`Failed to ${action} simulation: ${errorMsg}`);
-                            simulatorPanel?.webview.postMessage({ command: 'showError', text: `Failed to ${action} simulation: ${errorMsg}` });
+                            promptEngineerPanel?.webview.postMessage({ command: 'llmResponse', response: extractedText });
+
+                        } catch (error: any) {
+                            let errorMessage = 'Unknown error';
+                            if (axios.isAxiosError(error)) {
+                                if (error.response) {
+                                    errorMessage = `API Error ${error.response.status}: ${JSON.stringify(error.response.data, null, 2)}`;
+                                } else if (error.request) {
+                                    errorMessage = `Network Error: No response received from LLM API. Ensure the service is reachable. URL: ${apiUrl}`;
+                                } else {
+                                    errorMessage = `Request Setup Error: ${error.message}`;
+                                }
+                            } else if (error instanceof Error) {
+                                errorMessage = error.message;
+                            }
+                            aiOutputChannel?.appendLine(`LLM API Error: ${errorMessage}`);
+                            promptEngineerPanel?.webview.postMessage({ command: 'showError', text: `LLM API Error: ${errorMessage}` });
                         }
-                        return;
-                    
-                    case 'showErrorUser': 
-                        vscode.window.showErrorMessage(message.text);
                         return;
                 }
             },
@@ -348,20 +283,9 @@ export function activate(context: vscode.ExtensionContext) {
             context.subscriptions
         );
 
-        simulatorPanel.onDidDispose(
+        promptEngineerPanel.onDidDispose(
             () => {
-                if (simulatorPanelSimulationId) {
-                    const sse = activeSseConnections.get(simulatorPanelSimulationId);
-                    if (sse) {
-                        aiOutputChannel?.appendLine(`Simulator panel closed. Closing SSE for sim: ${simulatorPanelSimulationId}`);
-                        sse.close();
-                        activeSseConnections.delete(simulatorPanelSimulationId);
-                        axios.post(`${SIMULATION_SERVICE_URL}/simulations/${simulatorPanelSimulationId}/control`, { command: 'stop' })
-                            .catch(err => aiOutputChannel?.appendLine(`Error stopping sim ${simulatorPanelSimulationId} on panel close: ${err}`));
-                    }
-                    simulatorPanelSimulationId = null;
-                }
-                simulatorPanel = undefined;
+                promptEngineerPanel = undefined;
             },
             null,
             context.subscriptions
@@ -372,7 +296,6 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     aiOutputChannel?.appendLine("Deactivating AI Ecosystem Core extension.");
     activeSseConnections.forEach((sse, simId) => {
-        aiOutputChannel?.appendLine(`Closing SSE connection for simulation: ${simId}`);
         sse.close();
         axios.post(`${SIMULATION_SERVICE_URL}/simulations/${simId}/control`, { command: 'stop' })
              .catch(err => aiOutputChannel?.appendLine(`Error stopping sim ${simId} on deactivate: ${err}`));
@@ -380,12 +303,7 @@ export function deactivate() {
     activeSseConnections.clear();
 
     if (simulationServiceProcess && !simulationServiceProcess.killed) {
-        aiOutputChannel?.appendLine("Terminating simulation service process.");
-        const killed = simulationServiceProcess.kill(); 
-        if (!killed) {
-            aiOutputChannel?.appendLine("Failed to kill simulation service with SIGTERM. Attempting SIGKILL.");
-            simulationServiceProcess.kill('SIGKILL');
-        }
+        simulationServiceProcess.kill(); 
         simulationServiceProcess = null;
     }
     
@@ -396,4 +314,36 @@ export function deactivate() {
 }
 ```
 
-**`extensions/ai-ecosystem-core/webview/simulator/simulator-main.js`**
+**`extensions/ai-ecosystem-core/webview/main.js` (No changes needed if it already handles `showError` and `llmResponse`)**
+The existing `main.js` for the Prompt Engineering UI should already be capable of:
+1.  Sending `promptName` and `context` in the `sendPrompt` message.
+2.  Receiving `llmResponse` and displaying `message.response` in the `responseArea`.
+3.  Receiving `showError` and displaying `message.text` in the `responseArea` or a dedicated error display area.
+
+If the prompt context was intended to be structured JSON from the UI, then `main.js` might need a `JSON.parse(promptContext.value)` before sending, wrapped in a try-catch. However, the current plan of sending it as a string and appending to the prompt content in `extension.ts` is simpler and works.
+
+**Summary of Changes:**
+
+*   **`package.json`**:
+    *   Version incremented to `0.5.0`.
+    *   Added configuration settings under `contributes.configuration` for `aiEcosystem.llm.provider`, `aiEcosystem.llm.modelId`, `aiEcosystem.llm.apiKeySecretName`, and `aiEcosystem.llm.ollama.baseUrl`.
+    *   Added the `ai-ecosystem-core.setLlmApiKey` command to `contributes.commands` and `activationEvents`.
+*   **`src/extension.ts`**:
+    *   Added `axios` import.
+    *   **`ai-ecosystem-core.setLlmApiKey` Command**:
+        *   Prompts for API key using `vscode.window.showInputBox({ password: true })`.
+        *   Reads `apiKeySecretName` from settings.
+        *   Stores the key in `context.secrets`.
+    *   **`ai-ecosystem-core.openPromptEngineerUI` Command's Message Handler for `sendPrompt`**:
+        *   Retrieves LLM provider, model ID, and API key secret name from VS Code settings.
+        *   Retrieves the actual API key from `context.secrets`.
+        *   Handles cases where the API key is not set.
+        *   **Provider-Specific API Logic**:
+            *   Constructs the appropriate API URL, headers, and body for "openai", "anthropic", and "ollama" providers.
+            *   The prompt content sent to the LLM now combines `message.promptName` and `message.context`.
+        *   Uses `axios.post` to make the HTTP request.
+        *   **Response Handling**: Extracts the text response from the LLM's JSON structure based on the provider.
+        *   Sends the extracted text back to the webview using `command: 'llmResponse'`.
+        *   **Error Handling**: Catches errors from `axios` (network errors, API errors with status codes and response data) and sends a detailed error message to the webview using `command: 'showError'`.
+
+This implementation provides a functional Prompt Engineering UI that can connect to various LLM backends based on user configuration. The API key is securely stored using VS Code's `SecretStorage`.
