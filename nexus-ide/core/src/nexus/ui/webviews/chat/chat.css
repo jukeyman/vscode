@@ -1,0 +1,120 @@
+body {
+    font-family: var(--vscode-font-family, Arial, sans-serif);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden; /* Prevent body itself from scrolling */
+    background-color: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
+}
+
+#chat-container {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    padding: 10px;
+    overflow: hidden; /* Prevent this container from scrolling, manage scrolling in chat-history */
+}
+
+#chat-history {
+    flex-grow: 1;
+    overflow-y: auto; /* Allow scrolling for chat messages */
+    padding: 5px;
+    margin-bottom: 10px;
+    border: 1px solid var(--vscode-input-border, #ccc);
+    border-radius: 4px;
+    background-color: var(--vscode-input-background); /* Slightly different from body for contrast if needed */
+}
+
+.message {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    max-width: 85%;
+    word-wrap: break-word; /* Ensure long words don't overflow */
+    line-height: 1.4;
+}
+
+.message .sender-label {
+    font-weight: bold;
+    margin-right: 5px;
+    display: block; /* Make sender label take its own line for clarity */
+    margin-bottom: 2px;
+    font-size: 0.9em;
+}
+
+.message.user {
+    background-color: var(--vscode-button-background, #007acc);
+    color: var(--vscode-button-foreground, white);
+    align-self: flex-end;
+    margin-left: auto; /* Push user messages to the right */
+    border-bottom-right-radius: 2px;
+}
+
+.message.agent {
+    background-color: var(--vscode-editorWidget-background, #252526);
+    color: var(--vscode-editorWidget-foreground, #ccc);
+    align-self: flex-start;
+    border: 1px solid var(--vscode-editorWidget-border, #454545);
+    border-bottom-left-radius: 2px;
+}
+.message.agent .sender-label {
+    color: var(--vscode-terminal-ansiBrightBlue, #569CD6); /* Example: Agent label color */
+}
+
+
+.message.system {
+    background-color: var(--vscode-statusBarItem-remoteBackground, #1e1e2d);
+    color: var(--vscode-statusBarItem-remoteForeground, #ffffff);
+    align-self: center; /* Center system messages or keep them left */
+    margin-left: auto;
+    margin-right: auto;
+    font-style: italic;
+    font-size: 0.9em;
+    padding: 5px 10px;
+    border-radius: 4px;
+    text-align: center;
+    border: 1px solid var(--vscode-inputOption-activeBorder, #007acc);
+}
+.message.system .sender-label {
+    color: var(--vscode-terminal-ansiYellow, #FFC107); /* Example: System label color */
+}
+
+
+#input-area {
+    display: flex;
+    padding-top: 10px; /* Add some space above input */
+    border-top: 1px solid var(--vscode-input-border, #ccc);
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid var(--vscode-input-border, #ccc);
+    border-radius: 4px;
+    margin-right: 8px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+}
+
+#message-input:focus {
+    outline: none;
+    border-color: var(--vscode-focusBorder, #007fd4);
+}
+
+#send-button {
+    padding: 10px 15px;
+    border: none;
+    background-color: var(--vscode-button-background, #007acc);
+    color: var(--vscode-button-foreground, white);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#send-button:hover {
+    background-color: var(--vscode-button-hoverBackground, #005a9e);
+}
+```

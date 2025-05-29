@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--
+      Content Security Policy:
+      - default-src 'none': Disallows everything by default.
+      - style-src: Allows styles from the webview's origin (${webview.cspSource}) and inline styles ('unsafe-inline').
+                   Consider removing 'unsafe-inline' for stricter security if you use only external CSS.
+      - img-src: Allows images from the webview's origin and https sources.
+      - script-src: Allows scripts with a specific nonce.
+    -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'none'; 
+                   style-src ${webview.cspSource} 'unsafe-inline'; 
+                   img-src ${webview.cspSource} https:;
+                   script-src 'nonce-${nonce}';">
+    <title>Nexus Chat</title>
+    <link href="${stylesUri}" rel="stylesheet">
+</head>
+<body>
+    <div id="chat-container">
+        <div id="chat-history">
+            <!-- Messages will be appended here -->
+        </div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type your message or /createfile...">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>
+```
