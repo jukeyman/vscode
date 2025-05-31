@@ -10,14 +10,15 @@ import { QuantumContext } from './nexus/context/QuantumContext';
 import { AgentBus } from './nexus/agents/AgentBus';
 import { AgentOrchestrator } from './nexus/agents/AgentOrchestrator';
 import { ArchitectAgent } from './nexus/agents/personas/ArchitectAgent';
+import { BackendForgeAgent } from './nexus/agents/personas/BackendForgeAgent'; // Added BackendForgeAgent
 // UI Components
 import { ChatViewProvider } from './nexus/ui/webviews/chat/ChatViewProvider';
 
 // Other imports from previous steps (axios, EventSource, cp, etc.) would be here if used by helper functions
-import { randomBytes } from 'crypto'; // For getNonce if used here
-import * as cp from 'child_process'; // For simulationServiceProcess
-import axios from 'axios'; // For simulationServiceProcess health check
-import EventSource from 'eventsource'; // For activeSseConnections
+import { randomBytes } from 'crypto';
+import * as cp from 'child_process';
+import axios from 'axios';
+import EventSource from 'eventsource';
 
 // Global variables
 const SIMULATION_SERVICE_URL = 'http://localhost:8123';
@@ -52,14 +53,12 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlS
     htmlContent = htmlContent.replace(new RegExp('\\$\\{nonce\\}', 'g'), nonce);
     htmlContent = htmlContent.replace(/\$\{scriptUri\}/g, scriptUri.toString());
 
-    // If chat.css is also in 'out/webviews/chat' and referenced in chat.html as ${stylesUri}
-    const stylesPathOnDisk = vscode.Uri.joinPath(extensionUri, 'out', 'webviews', nodePath.dirname(htmlSubPath), 'chat.css');
-    if (fs.existsSync(stylesPathOnDisk.fsPath)) {
+    const stylesPathOnDisk = vscode.Uri.joinPath(extensionUri, 'out', 'webviews', nodePath.dirname(htmlSubPath), 'chat.css'); // Assuming chat.css for chat webview
+    if (htmlSubPath.startsWith('chat') && fs.existsSync(stylesPathOnDisk.fsPath)) { // Only add stylesUri if it's for chat and css exists
         const stylesUri = webview.asWebviewUri(stylesPathOnDisk);
         htmlContent = htmlContent.replace(/\$\{stylesUri\}/g, stylesUri.toString());
     } else {
-        // Fallback or remove if CSS is optional or handled differently
-        htmlContent = htmlContent.replace(/<link href="\$\{stylesUri\}" rel="stylesheet">/g, '<!-- Stylesheet not found -->');
+        htmlContent = htmlContent.replace(/<link href="\$\{stylesUri\}" rel="stylesheet">/g, '<!-- Stylesheet not applicable or not found -->');
     }
     return htmlContent;
 }
@@ -73,18 +72,12 @@ export async function activate(context: vscode.ExtensionContext) {
     aiOutputChannel.appendLine('Nexus IDE - AI Ecosystem Core activating...');
 
     const modelManager = new ModelManager();
-    // TODO: Implement settings provider and call modelManager.loadModelsFromSettings()
-    // For now, manually register a model or ensure ModelManager has defaults if needed.
-    // Example: if (modelManager.listRegisteredModels().length === 0) {
-    //     modelManager.registerModel('ollama', { modelId: 'llama3', baseUrl: 'http://localhost:11434' }, 'default_ollama');
-    // }
     aiOutputChannel.appendLine('ModelManager initialized.');
 
     const modelRouter = new ModelRouter(modelManager);
     aiOutputChannel.appendLine('ModelRouter initialized.');
 
     const quantumContext = new QuantumContext();
-    // await quantumContext.initialize(context.extensionUri); // If it has an async init
     aiOutputChannel.appendLine('QuantumContext initialized.');
 
     const agentBus = new AgentBus();
@@ -93,6 +86,7 @@ export async function activate(context: vscode.ExtensionContext) {
     const agentOrchestrator = new AgentOrchestrator(agentBus, quantumContext, modelRouter);
     aiOutputChannel.appendLine('AgentOrchestrator initialized.');
 
+    // Instantiate and Register ArchitectAgent
     const architectAgent = new ArchitectAgent(modelRouter);
     try {
         await architectAgent.initialize(context.extensionUri);
@@ -104,16 +98,26 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(`ArchitectAgent could not be initialized: ${errorMsg}`);
     }
 
+    // Instantiate and Register BackendForgeAgent
+    const backendForgeAgent = new BackendForgeAgent(modelRouter);
+    try {
+        await backendForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        agentOrchestrator.registerAgent(backendForgeAgent);
+        aiOutputChannel.appendLine('BackendForgeAgent registered successfully.');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        aiOutputChannel.appendLine(`Failed to initialize or register BackendForgeAgent: ${errorMsg}`);
+        vscode.window.showErrorMessage(`BackendForgeAgent could not be initialized: ${errorMsg}`);
+    }
+
     // Initialize Chat View Provider
-    // Note: ChatViewProvider's _getHtmlForWebview now uses 'out/webviews/chat' as base
-    // The general getWebviewHtml defined here also assumes 'out/webviews' then subpath.
     const chatViewProvider = new ChatViewProvider(context, agentOrchestrator);
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(ChatViewProvider.viewType, chatViewProvider)
     );
     aiOutputChannel.appendLine('ChatViewProvider registered.');
 
-    // Register other commands (ensure full implementations are present from previous steps)
+    // Register other commands
     context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.helloWorld', () => {
         vscode.window.showInformationMessage('Hello from Nexus AI Ecosystem!');
         aiOutputChannel.appendLine("Hello World command executed.");
@@ -132,7 +136,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     }));
 
-    // Placeholder for other command registrations from your project if they exist:
+    // Stubs for other commands from previous phases - ensure their full implementations are present
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.listAgents', async () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.validateAgentDefinitions', async () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.createAgentDefinition', async () => { /* ... */ }));
@@ -149,7 +153,6 @@ export function deactivate() {
     aiOutputChannel?.appendLine("Deactivating AI Ecosystem Core extension.");
     activeSseConnections.forEach((sse, simId) => {
         sse.close();
-        // Optionally send stop command
         axios.post(`${SIMULATION_SERVICE_URL}/simulations/${simId}/control`, { command: 'stop' })
              .catch(err => aiOutputChannel?.appendLine(`Error stopping sim ${simId} on deactivate: ${err}`));
     });
@@ -166,3 +169,5 @@ export function deactivate() {
     simulatorPanel?.dispose();
 }
 ```
+
+**2. `nexus-ide/core/src/nexus/agents/AgentOrchestrator.ts`**
