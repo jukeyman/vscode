@@ -15,7 +15,7 @@ export class GPTModel implements ILLMProvider {
     async generateResponse(prompt: string, options?: LLMGenerationOptions): Promise<string> {
         const modelToUse = options?.model || this.config.modelId;
         const endpoint = `${this.API_BASE_URL}/chat/completions`;
-        
+
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.config.apiKey}`,

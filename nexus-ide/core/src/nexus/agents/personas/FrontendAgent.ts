@@ -9,8 +9,8 @@ export class FrontendAgent extends BaseAgent implements IAgent {
             description: "Develops frontend components, UI logic, and handles user interface aspects based on design specifications or UI components from a system blueprint.",
             corePrompt: "You are a specialized Frontend Developer AI. Your task is to implement UI components, pages, and frontend logic according to the provided specifications. You should focus on creating responsive, accessible, and maintainable code using the specified frontend technology stack.",
             capabilities: [
-                "ui_component_development", 
-                "frontend_logic_implementation", 
+                "ui_component_development",
+                "frontend_logic_implementation",
                 "state_management_integration",
                 "api_integration_frontend",
                 "html_css_js_typescript_generation"
@@ -38,7 +38,7 @@ export class FrontendAgent extends BaseAgent implements IAgent {
         // Mock logic for generating a UI component
         if (task.description.toLowerCase().includes("create ui component") || task.description.toLowerCase().includes("develop page")) {
             const componentName = typeof task.userInput === 'string' ? task.userInput : task.userInput?.componentName || "NewComponent";
-            
+
             this.log(`Generating mock UI component: ${componentName}`);
             // In a real scenario, this would involve:
             // 1. Analyzing detailed specifications (from task.userInput or QuantumContext).
@@ -67,23 +67,23 @@ const ${componentName}: React.FC<${componentName}Props> = ({ title, onClick }) =
 export default ${componentName};
             `;
             this.log(`Generated mock code for ${componentName}.`);
-            return { 
-                taskId: task.taskId, 
-                status: 'success', 
+            return {
+                taskId: task.taskId,
+                status: 'success',
                 output: {
                     componentName: componentName,
                     code: mockComponentCode,
                     language: "typescript",
                     framework: "React" // Example
                 },
-                logs: [`Mock code for UI component ${componentName} generated.`] 
+                logs: [`Mock code for UI component ${componentName} generated.`]
             };
         }
 
         this.log(`Task '${task.description}' not directly handled by mock logic.`, "Returning failure.");
-        return { 
-            taskId: task.taskId, 
-            status: 'failure', 
+        return {
+            taskId: task.taskId,
+            status: 'failure',
             error: "Unknown task or insufficient details for FrontendAgent's mock execution.",
             output: null
         };

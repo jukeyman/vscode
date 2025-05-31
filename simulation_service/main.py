@@ -33,7 +33,7 @@ async def handle_create_simulation(request_data: SimulationCreateRequest = Body(
     """
     try:
         print(f"Received request to create simulation for agent: {request_data.agentId} with input: '{request_data.initialInput}'")
-        
+
         # agentId is now treated as relative to BASE_AGENTS_DIRECTORY
         # The actual path joining and validation happens in load_agent_definition
         simulation_id = await create_simulation_instance(
@@ -82,7 +82,7 @@ async def handle_simulation_events(simulation_id: str, request: Request):
 
 
         disconnect_check_task = asyncio.create_task(check_disconnect())
-        
+
         try:
             async for event_data in sim.get_event_stream():
                 if client_disconnected:

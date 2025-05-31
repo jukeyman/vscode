@@ -94,7 +94,7 @@ export class QuantumContext {
         } else {
             console.log("QuantumContext: vscode.workspace.findFiles API not available. Cannot get project context.");
         }
-        
+
         console.log(`QuantumContext: Retrieved ${projectItems.length} project items.`);
         return projectItems;
     }
@@ -123,7 +123,7 @@ export class QuantumContext {
         }
         await this.semanticIndex.indexItem(item); // Index it (idempotent in current mock)
     }
-    
+
     /**
      * Adds multiple context items.
      */
@@ -168,11 +168,11 @@ export class QuantumContext {
         console.log(`QuantumContext: Getting codebase graph structure (depth ${depth}) (conceptual).`);
         // In a real implementation, this would query the CodebaseGraph instance.
         // For now, return a mock structure or whatever CodebaseGraph.getGraphRepresentation() provides.
-        return this.codebaseGraph.getGraphRepresentation(depth); 
+        return this.codebaseGraph.getGraphRepresentation(depth);
     }
 
     // --- Methods for interacting with CodebaseGraph and SemanticIndex directly if needed ---
-    
+
     /**
      * Directly accesses the CodebaseGraph instance.
      */

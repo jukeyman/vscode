@@ -21,20 +21,20 @@ export class ContextProcessor {
      * Injects relevant context into the given prompt string.
      * This is a basic stub and will be enhanced significantly.
      * @param prompt The original prompt string.
-     * @param contextConfig Optional configuration for context injection. 
+     * @param contextConfig Optional configuration for context injection.
      *                      e.g., { retrieval_needed?: boolean, max_context_tokens?: number }
      * @returns A promise that resolves to the prompt string with injected context.
      */
     async injectContext(prompt: string, contextConfig?: any): Promise<string> {
         console.log("ContextProcessor: injectContext called.");
         let injectedContext = "\n\n--- Contextual Information (Basic) ---\n";
-        
+
         if (this.quantumContext && contextConfig?.retrieval_needed) {
             console.log("ContextProcessor: QuantumContext retrieval needed.");
             try {
                 // Example: Use QuantumContext to retrieve relevant snippets
                 const snippets = await this.quantumContext.retrieveRelevantSnippets(prompt, {
-                    max_results: 3, 
+                    max_results: 3,
                     // other options for retrieval
                 });
                 if (snippets && snippets.length > 0) {
@@ -61,7 +61,7 @@ export class ContextProcessor {
         } else {
             injectedContext += "No dynamic context retrieval requested for this prompt.\n";
         }
-        
+
         injectedContext += "--- End of Contextual Information ---\n";
 
         // Simple prepend for now, more sophisticated merging will be needed.
@@ -77,7 +77,7 @@ export class ContextProcessor {
      */
     async gatherContextForPrompt(prompt: string, options?: any): Promise<Record<string, any>> {
         console.log(`ContextProcessor: gatherContextForPrompt called for prompt (first 50 chars): "${prompt.substring(0,50)}..."`);
-        
+
         const gatheredContext: Record<string, any> = {
             // Example static context variables
             current_date: new Date().toISOString(),
@@ -91,7 +91,7 @@ export class ContextProcessor {
                 if (workspaceSummary) {
                     gatheredContext['workspace_summary'] = workspaceSummary;
                 }
-                
+
                 // Example: If options indicate specific needs, retrieve more
                 if (options?.include_file_context) {
                     const fileContext = await this.quantumContext.getCurrentFileContext();
@@ -104,7 +104,7 @@ export class ContextProcessor {
                  console.error("ContextProcessor: Error gathering context with QuantumContext:", error);
             }
         }
-        
+
         console.log("ContextProcessor: Gathered context variables:", Object.keys(gatheredContext));
         return gatheredContext;
     }

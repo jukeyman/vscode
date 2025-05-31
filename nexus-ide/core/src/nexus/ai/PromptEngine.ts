@@ -52,7 +52,7 @@ export class PromptEngine {
         // For example, read all .md files, use frontmatter for metadata (id, description, requiredVariables)
         // and file content for the template string.
     }
-    
+
     /**
      * Registers a new prompt template or overwrites an existing one.
      * @param template The PromptTemplate object to register.
@@ -71,7 +71,7 @@ export class PromptEngine {
      * Crafts a final prompt string by loading a template (if templateNameOrRaw is a known ID),
      * replacing placeholders with contextVariables, integrating an optional userQuery,
      * and then injecting further context using the ContextProcessor.
-     * 
+     *
      * @param templateNameOrRaw Either the ID of a registered prompt template or the raw template string itself.
      * @param contextVariables A record of key-value pairs to replace placeholders in the template.
      * @param userQuery An optional user query to be appended or integrated into the prompt.
@@ -112,16 +112,16 @@ export class PromptEngine {
             if (processedPrompt.includes('{{user_query}}')) { // If template has a specific placeholder for user query
                  processedPrompt = processedPrompt.replace('{{user_query}}', userQuery);
             } else { // Append otherwise
-                processedPrompt += `\n\nUser Query: ${userQuery}`; 
+                processedPrompt += `\n\nUser Query: ${userQuery}`;
             }
         }
-        
+
         // Inject further context using ContextProcessor (currently a stub)
         // The contextConfig for injectContext might come from template metadata or be passed in.
         const finalPrompt = await this.contextProcessor.injectContext(processedPrompt, {
             // Example contextConfig, could be more dynamic
-            retrieval_needed: template?.id === 'general_query_with_context', 
-            max_context_tokens: 2000 
+            retrieval_needed: template?.id === 'general_query_with_context',
+            max_context_tokens: 2000
         });
 
         console.log(`PromptEngine: Crafted final prompt for template/raw: '${templateNameOrRaw.substring(0,50)}...'`);

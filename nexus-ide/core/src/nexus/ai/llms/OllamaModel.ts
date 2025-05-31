@@ -17,8 +17,8 @@ export class OllamaModel implements ILLMProvider {
         // Ollama has different endpoints for chat completions vs. raw generation.
         // We'll assume chat endpoint for now as it's more common for user interaction.
         // Use /api/generate for raw completions if needed.
-        const endpoint = `${this.config.baseUrl}/api/chat`; 
-        
+        const endpoint = `${this.config.baseUrl}/api/chat`;
+
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
         };
@@ -43,7 +43,7 @@ export class OllamaModel implements ILLMProvider {
                 delete body.options;
             }
         }
-        
+
         try {
             console.log(`OllamaModel: Sending request to ${endpoint} with model ${modelToUse}`);
             const response = await axios.post(endpoint, body, { headers });
@@ -51,7 +51,7 @@ export class OllamaModel implements ILLMProvider {
             // For /api/chat (non-streaming)
             if (response.data && response.data.message && response.data.message.content) {
                 return response.data.message.content.trim();
-            } 
+            }
             // Fallback for /api/generate (non-streaming, if endpoint was changed)
             else if (response.data && response.data.response) {
                 return response.data.response.trim();

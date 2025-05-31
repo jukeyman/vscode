@@ -15,7 +15,7 @@ export class GeminiModel implements ILLMProvider {
     async generateResponse(prompt: string, options?: LLMGenerationOptions): Promise<string> {
         const modelToUse = options?.model || this.config.modelId;
         const endpoint = `${this.API_BASE_URL}/${modelToUse}:generateContent?key=${this.config.apiKey}`;
-        
+
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
         };
@@ -33,10 +33,10 @@ export class GeminiModel implements ILLMProvider {
                 // stopSequences: options?.stop // if options.stop is an array of strings
             }
         };
-        
+
         // Remove undefined generationConfig options
         if (body.generationConfig) {
-            Object.keys(body.generationConfig).forEach(key => 
+            Object.keys(body.generationConfig).forEach(key =>
                 body.generationConfig[key] === undefined && delete body.generationConfig[key]
             );
             if (Object.keys(body.generationConfig).length === 0) {

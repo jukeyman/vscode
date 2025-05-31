@@ -13,7 +13,7 @@
     sendPromptButton.addEventListener('click', () => {
         const selectedPrompt = promptSelector.value;
         const contextValue = promptContext.value;
-        
+
         responseArea.textContent = 'Sending prompt...'; // Provide immediate feedback
 
         vscode.postMessage({

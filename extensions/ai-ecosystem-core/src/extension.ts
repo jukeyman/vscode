@@ -2,20 +2,20 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as nodePath from 'path';
 import Ajv, { Schema } from 'ajv';
-import * as yaml from 'js-yaml'; 
+import * as yaml from 'js-yaml';
 import { randomBytes } from 'crypto';
-import axios from 'axios'; 
-import EventSource from 'eventsource'; 
-import * as cp from 'child_process'; 
+import axios from 'axios';
+import EventSource from 'eventsource';
+import * as cp from 'child_process';
 
 // Global/Context Variables
-const SIMULATION_SERVICE_URL = 'http://localhost:8123'; 
+const SIMULATION_SERVICE_URL = 'http://localhost:8123';
 let simulationServiceProcess: cp.ChildProcess | null = null;
-const activeSseConnections: Map<string, EventSource> = new Map(); 
-let serviceOutputChannel: vscode.OutputChannel | undefined; 
+const activeSseConnections: Map<string, EventSource> = new Map();
+let serviceOutputChannel: vscode.OutputChannel | undefined;
 let aiOutputChannel: vscode.OutputChannel | undefined;
 let promptEngineerPanel: vscode.WebviewPanel | undefined = undefined;
-let simulatorPanel: vscode.WebviewPanel | undefined = undefined; 
+let simulatorPanel: vscode.WebviewPanel | undefined = undefined;
 let simulatorPanelSimulationId: string | null = null;
 
 let architectDominionMetaPrompt: string = ''; // To store the loaded meta-prompt
@@ -66,11 +66,11 @@ async function findAgentDefinitionFiles(): Promise<vscode.Uri[]> {
 async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext): Promise<boolean> {
     if (simulationServiceProcess && !simulationServiceProcess.killed) {
         try {
-            await axios.get(SIMULATION_SERVICE_URL + "/docs", { timeout: 1000 }); 
+            await axios.get(SIMULATION_SERVICE_URL + "/docs", { timeout: 1000 });
             return true;
         } catch (e) {
-            simulationServiceProcess.kill(); 
-            simulationServiceProcess = null; 
+            simulationServiceProcess.kill();
+            simulationServiceProcess = null;
         }
     }
     const workspaceRootPath = getWorkspaceRootPath();
@@ -84,7 +84,7 @@ async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext
     }
     serviceOutputChannel.show(true);
     serviceOutputChannel.appendLine("Attempting to start Python simulation service...");
-    
+
     const serviceDir = nodePath.join(workspaceRootPath, 'simulation_service');
     const serviceMainPy = nodePath.join(serviceDir, 'main.py');
 
@@ -104,7 +104,7 @@ async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext
     });
     simulationServiceProcess.on('exit', (code, signal) => {
         serviceOutputChannel?.appendLine(`Simulation service exited with code ${code}, signal ${signal}`);
-        if (simulationServiceProcess && simulationServiceProcess.pid === (simulationServiceProcess as any).pid) { 
+        if (simulationServiceProcess && simulationServiceProcess.pid === (simulationServiceProcess as any).pid) {
             simulationServiceProcess = null;
         }
     });
@@ -112,7 +112,7 @@ async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext
     return new Promise<boolean>((resolve) => {
         setTimeout(async () => {
             try {
-                await axios.get(SIMULATION_SERVICE_URL + "/docs", { timeout: 3000 }); 
+                await axios.get(SIMULATION_SERVICE_URL + "/docs", { timeout: 3000 });
                 serviceOutputChannel?.appendLine("Simulation service started successfully and is responsive.");
                 resolve(true);
             } catch (e) {
@@ -123,7 +123,7 @@ async function ensureSimulationServiceIsRunning(context: vscode.ExtensionContext
                 simulationServiceProcess = null;
                 resolve(false);
             }
-        }, 5000); 
+        }, 5000);
     });
 }
 
@@ -151,7 +151,7 @@ function getPythonToolBoilerplate(className: string): string { return `class ${c
 
 export async function activate(context: vscode.ExtensionContext) { // Made activate async
     if (!aiOutputChannel) {
-        aiOutputChannel = vscode.window.createOutputChannel("AI Ecosystem Log"); 
+        aiOutputChannel = vscode.window.createOutputChannel("AI Ecosystem Log");
         context.subscriptions.push(aiOutputChannel);
     }
     aiOutputChannel.appendLine('AI Ecosystem Core extension activated.');
@@ -223,7 +223,7 @@ export async function activate(context: vscode.ExtensionContext) { // Made activ
         }
 
         const fullPromptForLlm = architectDominionMetaPrompt.replace('USER_REQUIREMENT_PLACEHOLDER', userPromptText);
-        
+
         let apiUrl = '';
         let apiHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
         let apiBody: Record<string, any> = {};
@@ -251,7 +251,7 @@ export async function activate(context: vscode.ExtensionContext) { // Made activ
             vscode.window.showInformationMessage(`Generating system blueprint with ${provider}... This may take a moment.`);
 
             const llmResponse = await axios.post(apiUrl, apiBody, { headers: apiHeaders, timeout: 120000 }); // 120s timeout
-            
+
             let extractedYaml = '';
             if (provider === 'openai') {
                 extractedYaml = llmResponse.data.choices?.[0]?.message?.content || '';
@@ -287,7 +287,7 @@ export async function activate(context: vscode.ExtensionContext) { // Made activ
                 aiOutputChannel?.appendLine(`Invalid YAML from LLM:\n${extractedYaml}\nError: ${yamlError.message}`);
                 return;
             }
-            
+
             const ajv = new Ajv({ allErrors: true });
             const validate = ajv.compile(blueprintSchema);
             const isValid = validate(parsedBlueprint);
@@ -302,7 +302,7 @@ export async function activate(context: vscode.ExtensionContext) { // Made activ
                 // aiOutputChannel?.appendLine(`Invalid blueprint saved to ${invalidBlueprintPath}`);
                 return;
             }
-            
+
             // Save validated blueprint
             const blueprintsDir = nodePath.join(workspaceRootPath, 'blueprints');
             await vscode.workspace.fs.createDirectory(vscode.Uri.file(blueprintsDir)); // Ensure exists
@@ -311,9 +311,9 @@ export async function activate(context: vscode.ExtensionContext) { // Made activ
             const blueprintBaseName = (parsedBlueprint?.projectMetadata?.projectName || "unnamed_system").replace(/\s+/g, '_').replace(/[^\w-]/g, '');
             const blueprintFileName = `blueprint_${blueprintBaseName}_${timestamp}.yaml`;
             const blueprintFilePath = nodePath.join(blueprintsDir, blueprintFileName);
-            
+
             await vscode.workspace.fs.writeFile(vscode.Uri.file(blueprintFilePath), Buffer.from(extractedYaml, 'utf8')); // Save the original, validated YAML
-            
+
             const document = await vscode.workspace.openTextDocument(vscode.Uri.file(blueprintFilePath));
             await vscode.window.showTextDocument(document);
             vscode.window.showInformationMessage(`System blueprint '${blueprintFileName}' generated and validated successfully in 'blueprints' directory.`);
@@ -348,13 +348,13 @@ export function deactivate() {
     activeSseConnections.clear();
 
     if (simulationServiceProcess && !simulationServiceProcess.killed) {
-        simulationServiceProcess.kill(); 
+        simulationServiceProcess.kill();
         simulationServiceProcess = null;
     }
-    
+
     aiOutputChannel?.dispose();
-    serviceOutputChannel?.dispose(); 
+    serviceOutputChannel?.dispose();
     promptEngineerPanel?.dispose();
-    simulatorPanel?.dispose(); 
+    simulatorPanel?.dispose();
 }
 ```

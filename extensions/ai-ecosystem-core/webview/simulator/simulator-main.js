@@ -12,9 +12,9 @@
     const resumeSimulationButton = document.getElementById('resumeSimulationButton');
     const stepSimulationButton = document.getElementById('stepSimulationButton');
     const stopSimulationButton = document.getElementById('stopSimulationButton');
-    
-    const simulationLogDiv = document.getElementById('simulationLog'); 
-    const traceViewerDiv = document.getElementById('traceViewer'); 
+
+    const simulationLogDiv = document.getElementById('simulationLog');
+    const traceViewerDiv = document.getElementById('traceViewer');
 
     let currentSimState = 'idle'; // Possible states: idle, starting, running, paused, stepping, stopped, completed, error
 
@@ -31,13 +31,13 @@
             case 'idle':
             case 'stopped':
             case 'completed':
-            case 'error': 
+            case 'error':
                 runSimulationButton.disabled = false;
                 break;
             case 'starting': // Intermediate state while waiting for service
                 // All controls might be disabled or just run
                 // For now, keep them disabled until 'running' or 'error'
-                break; 
+                break;
             case 'running':
                 pauseSimulationButton.disabled = false;
                 stopSimulationButton.disabled = false;
@@ -51,11 +51,11 @@
             // For now, assume a step leads back to 'paused' or another definitive state via status_update.
         }
     }
-    
+
     function addSimulationLog(message, type = 'INFO') {
         if (simulationLogDiv) {
             const entry = document.createElement('div');
-            entry.className = 'log-entry'; 
+            entry.className = 'log-entry';
             const time = new Date().toLocaleTimeString();
             const sanitizedMessage = String(message).replace(/</g, "&lt;").replace(/>/g, "&gt;");
             entry.innerHTML = `<span class="timestamp">[${time}]</span> <span class="type-${type.toUpperCase()}">[${type.toUpperCase()}]</span> ${sanitizedMessage}`;
@@ -64,7 +64,7 @@
                 simulationLogDiv.innerHTML = '';
             }
             simulationLogDiv.appendChild(entry);
-            simulationLogDiv.scrollTop = simulationLogDiv.scrollHeight; 
+            simulationLogDiv.scrollTop = simulationLogDiv.scrollHeight;
         }
     }
 
@@ -99,7 +99,7 @@
         const initialInputText = initialInput.value;
 
         if (!selectedAgentId) {
-            vscode.postMessage({ command: 'showErrorUser', text: 'Please select an agent before running the simulation.' }); 
+            vscode.postMessage({ command: 'showErrorUser', text: 'Please select an agent before running the simulation.' });
             addSimulationLog('Error: No agent selected for simulation.', 'ERROR');
             return;
         }
@@ -114,7 +114,7 @@
             // mockConfigs: {} // TODO: Add UI for mock configs if needed
         });
         addSimulationLog(`Run command sent for agent: ${selectedAgentId}. Waiting for service...`);
-        updateButtonStates('starting'); 
+        updateButtonStates('starting');
     });
 
     pauseSimulationButton.addEventListener('click', () => {
@@ -147,7 +147,7 @@
                     if (message.agents && message.agents.length > 0) {
                         message.agents.forEach(agent => {
                             const option = document.createElement('option');
-                            option.value = agent.id; 
+                            option.value = agent.id;
                             option.textContent = agent.name;
                             agentSelector.appendChild(option);
                         });
@@ -161,10 +161,10 @@
                     }
                 }
                 break;
-            case 'simulationLogEntry': 
+            case 'simulationLogEntry':
                 addSimulationLog(message.data, message.logType || 'INFO');
                 break;
-            case 'traceEvent': 
+            case 'traceEvent':
                 addTraceEvent(message.event);
                 // If the trace event itself is a status update from the service, reflect it in button states.
                 if (message.event && message.event.type === 'status_update' && message.event.data && message.event.data.state) {

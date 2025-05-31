@@ -157,7 +157,7 @@
       "type": "array",
       "description": "Defines the data entities and their structures.",
       "items": {
-        "$ref": "#/definitions/databaseTableDefinition" 
+        "$ref": "#/definitions/databaseTableDefinition"
       }
     },
     "apiEndpoints": {
@@ -538,7 +538,7 @@
         "format": {"type": ["string", "null"], "description": "e.g., uuid, date-time, int64"},
         "description": {"type": "string"},
         "required": {"type": "boolean", "default": false},
-        "example": {} 
+        "example": {}
       },
       "additionalProperties": false
     },

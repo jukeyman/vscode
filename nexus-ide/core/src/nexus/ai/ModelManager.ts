@@ -70,7 +70,7 @@ export class ModelManager {
     getModelProvider(modelKey: string): ILLMProvider | undefined {
         return this.models.get(modelKey);
     }
-    
+
     /**
      * Gets a completion from a registered LLM.
      * @param modelKey The key (alias or modelId) of the model to use.

@@ -34,7 +34,7 @@ export class ClaudeModel implements ILLMProvider {
 
         // Remove undefined options to avoid sending them
         Object.keys(body).forEach(key => body[key] === undefined && delete body[key]);
-        
+
         try {
             console.log(`ClaudeModel: Sending request to ${endpoint} with model ${modelToUse}`);
             const response = await axios.post(endpoint, body, { headers });

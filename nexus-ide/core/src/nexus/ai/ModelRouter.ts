@@ -19,11 +19,11 @@ export class ModelRouter {
      * @returns A promise that resolves to the LLM's response string, or null if an error occurs.
      */
     async routeRequest(
-        prompt: string, 
-        taskDescription?: string, 
+        prompt: string,
+        taskDescription?: string,
         options?: RoutingOptions
     ): Promise<string | null> {
-        
+
         let modelKeyToUse: string | undefined = undefined;
 
         // 1. Direct routing: If a specific model (alias or ID) is requested in options.model
@@ -36,7 +36,7 @@ export class ModelRouter {
                 console.warn(`ModelRouter: Preferred model '${preferredModelKey}' not found. Attempting fallback.`);
             }
         }
-        
+
         // 2. Provider-based routing (if specific model wasn't found or specified)
         if (!modelKeyToUse && options?.preferredProvider) {
             // This is a simplified approach. A real implementation might look up
@@ -45,7 +45,7 @@ export class ModelRouter {
             // Or, it might iterate through all registered models and pick one matching the provider.
             const registeredModels = this.modelManager.listRegisteredModels();
             // Example: find first model that seems to belong to the preferred provider (very naive)
-            modelKeyToUse = registeredModels.find(key => 
+            modelKeyToUse = registeredModels.find(key =>
                 key.toLowerCase().includes(options!.preferredProvider!.toLowerCase())
             );
             if (modelKeyToUse) {
@@ -61,7 +61,7 @@ export class ModelRouter {
             if (options?.complexity === 'high') {
                 // Try to find a model typically considered high-capability
                 const highTierModels = ['gpt-4', 'claude-3-opus', 'gemini-ultra']; // Example aliases/IDs
-                modelKeyToUse = highTierModels.find(m => registeredModels.includes(m)) || 
+                modelKeyToUse = highTierModels.find(m => registeredModels.includes(m)) ||
                                 registeredModels.find(m => m.includes('gpt-4') || m.includes('opus') || m.includes('ultra'));
                 if(modelKeyToUse) console.log(`ModelRouter: Routing to high complexity model: ${modelKeyToUse}`);
             } else if (options?.complexity === 'medium') {
@@ -76,7 +76,7 @@ export class ModelRouter {
                 if(modelKeyToUse) console.log(`ModelRouter: Routing to low complexity/default model: ${modelKeyToUse}`);
             }
         }
-        
+
         // 4. Absolute fallback (e.g., first registered model or a predefined default)
         if (!modelKeyToUse) {
             const registered = this.modelManager.listRegisteredModels();

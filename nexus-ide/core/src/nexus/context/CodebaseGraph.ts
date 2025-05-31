@@ -100,7 +100,7 @@ export class CodebaseGraph {
             console.warn(`CodebaseGraph: Node '${nodeId}' not found for finding relations.`);
             return [];
         }
-        
+
         if (depth !== 1) {
             console.warn("CodebaseGraph: findRelatedNodes currently only supports depth 1.");
             // Basic implementation for depth 1
@@ -171,10 +171,10 @@ export class CodebaseGraph {
             const importRegex = /import\s+.*?from\s+['"](.+?)['"]/g;
             while ((match = importRegex.exec(fileItem.content)) !== null) {
                 const importPath = match[1];
-                // For simplicity, treat importPath as a node ID. 
+                // For simplicity, treat importPath as a node ID.
                 // In reality, resolve this path to an actual file node ID.
                 const importedFileNodeId = importPath; // This is a simplification
-                
+
                 // Add a placeholder node for the imported module/file if it doesn't exist
                 // In a real system, this would be resolved to an existing file node or an external module node
                 if (!this.nodes.has(importedFileNodeId)) {
@@ -185,7 +185,7 @@ export class CodebaseGraph {
                         metadata: { path: importPath }
                     });
                 }
-               
+
                 await this.addEdge({
                     id: `${fileNodeId}_imports_${importedFileNodeId}`,
                     source: fileNodeId,

@@ -13,7 +13,7 @@ export interface LLMConfig {
     modelId: string; // e.g., "gpt-4", "claude-3-opus-20240229", "llama3"
     baseUrl?: string; // e.g., for Ollama or other self-hosted endpoints
     // Add other provider-specific config keys as needed
-    [key: string]: any; 
+    [key: string]: any;
 }
 
 export interface ILLMProvider {

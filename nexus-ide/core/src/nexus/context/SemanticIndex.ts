@@ -24,10 +24,10 @@ export class SemanticIndex {
         if (this.mockEmbeddingsEnabled && !item.embedding) {
             // Generate a very simple mock embedding based on content length and type
             const typeCode = item.type.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % 100;
-            item.embedding = [item.content.length, Math.random(), typeCode / 100]; 
+            item.embedding = [item.content.length, Math.random(), typeCode / 100];
             console.log(`SemanticIndex: Generated mock embedding for item: ${item.id}`);
         }
-        
+
         this.indexedItems.set(item.id, item);
         if (!existingItem) {
             console.log(`SemanticIndex: Indexed new item: ${item.id} - ${item.type}`);
@@ -61,7 +61,7 @@ export class SemanticIndex {
 
         for (const item of this.indexedItems.values()) {
             // Basic keyword search in content or ID
-            if (item.content.toLowerCase().includes(lowerCaseQuery) || 
+            if (item.content.toLowerCase().includes(lowerCaseQuery) ||
                 item.id.toLowerCase().includes(lowerCaseQuery) ||
                 (item.metadata?.filePath && String(item.metadata.filePath).toLowerCase().includes(lowerCaseQuery))
             ) {
@@ -73,14 +73,14 @@ export class SemanticIndex {
         if (this.mockEmbeddingsEnabled) {
             results.sort((a, b) => {
                 // Prefer items where query terms appear more often (very naive score)
-                const scoreA = (a.content.toLowerCase().split(lowerCaseQuery).length - 1) + 
+                const scoreA = (a.content.toLowerCase().split(lowerCaseQuery).length - 1) +
                                (a.embedding ? a.embedding[1] * 0.1 : 0); // Add a bit of embedding randomness
                 const scoreB = (b.content.toLowerCase().split(lowerCaseQuery).length - 1) +
                                (b.embedding ? b.embedding[1] * 0.1 : 0);
                 return scoreB - scoreA; // Higher score first
             });
         }
-        
+
         console.log(`SemanticIndex: Found ${results.length} potential matches for "${query}". Returning up to ${limit}.`);
         return results.slice(0, limit);
     }

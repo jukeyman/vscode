@@ -37,7 +37,7 @@
                 text: messageText
             });
         }
-        
+
         messageInput.value = ''; // Clear input field
     }
 
@@ -57,17 +57,17 @@
             case 'addChatMessage':
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('message', message.sender); // e.g., 'message user', 'message agent'
-                
+
                 const senderSpan = document.createElement('span');
                 senderSpan.classList.add('sender-label');
                 senderSpan.textContent = message.sender.toUpperCase() + ": ";
-                
+
                 const textSpan = document.createElement('span');
                 textSpan.textContent = message.text; // Text content is safer
 
                 messageDiv.appendChild(senderSpan);
                 messageDiv.appendChild(textSpan);
-                
+
                 chatHistory.appendChild(messageDiv);
                 chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to the bottom
                 break;

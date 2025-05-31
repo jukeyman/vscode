@@ -21,7 +21,7 @@ export interface AgentTask {
     subTasks?: AgentTask[]; // For decomposition
     targetAgent?: string; // Hint for which agent should execute
     // Contextual overrides or specific context items for this task
-    taskContext?: Record<string, any>; 
+    taskContext?: Record<string, any>;
 }
 
 export interface AgentResult {
@@ -35,7 +35,7 @@ export interface AgentResult {
 
 export interface IAgent {
     readonly config: AgentConfig;
-    
+
     /**
      * Optional asynchronous initialization method for the agent.
      * Called once when the agent is registered or first used.
@@ -58,7 +58,7 @@ export interface IAgent {
     //  * @param context The current QuantumContext.
     //  * @returns A promise resolving to the agent's internal thoughts, plan, or next action decision.
     //  */
-    // think?(task: AgentTask, context: QuantumContext): Promise<any>; 
+    // think?(task: AgentTask, context: QuantumContext): Promise<any>;
 
     // /**
     //  * The acting phase, where the agent performs an action (e.g., calls a tool, generates content).
@@ -66,7 +66,7 @@ export interface IAgent {
     //  * @param context The current QuantumContext.
     //  * @returns A promise resolving to the outcome of the action.
     //  */
-    // act?(thoughtProcess: any, context: QuantumContext): Promise<any>; 
+    // act?(thoughtProcess: any, context: QuantumContext): Promise<any>;
 
     // /**
     //  * The reflection phase, where the agent processes the outcome of its action.
@@ -75,7 +75,7 @@ export interface IAgent {
     //  * @param context The current QuantumContext.
     //  * @returns A promise that resolves when reflection is complete.
     //  */
-    // reflect?(actionOutcome: any, context: QuantumContext): Promise<void>; 
+    // reflect?(actionOutcome: any, context: QuantumContext): Promise<void>;
 
     /**
      * Optional asynchronous cleanup method for the agent.

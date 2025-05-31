@@ -1,191 +1,171 @@
 import { IAgent, AgentConfig, AgentTask, AgentResult } from './IAgent';
 import { AgentBus } from './AgentBus';
-import { QuantumContext } from '../context/QuantumContext'; // Adjusted path
-import { ModelRouter } from '../ai/ModelRouter'; // Adjusted path
+import { QuantumContext } from '../context/QuantumContext';
+import { ModelRouter } from '../ai/ModelRouter';
 
 export class AgentOrchestrator {
     private agents: Map<string, IAgent> = new Map();
     private agentBus: AgentBus;
     private quantumContext: QuantumContext;
-    private modelRouter: ModelRouter; 
+    private modelRouter: ModelRouter;
 
     constructor(agentBus: AgentBus, quantumContext: QuantumContext, modelRouter: ModelRouter) {
         this.agentBus = agentBus;
         this.quantumContext = quantumContext;
-        this.modelRouter = modelRouter; // Store the modelRouter instance
-        console.log("[AgentOrchestrator] Initialized with AgentBus, QuantumContext, and ModelRouter.");
+        this.modelRouter = modelRouter;
+        this.log("AgentOrchestrator initialized with AgentBus, QuantumContext, and ModelRouter.");
     }
 
-    /**
-     * Registers an agent with the orchestrator.
-     * @param agent The agent instance to register.
-     */
     async registerAgent(agent: IAgent): Promise<void> {
         if (!agent || !agent.config || !agent.config.agentName) {
-            console.error("[AgentOrchestrator] Attempted to register an invalid agent or agent with no name.");
+            this.logError("Attempted to register an invalid agent or agent with no name.");
             return;
         }
 
         if (this.agents.has(agent.config.agentName)) {
-            console.warn(`[AgentOrchestrator] Agent '${agent.config.agentName}' is already registered. Re-registering (will overwrite).`);
+            this.logWarn(`Agent '${agent.config.agentName}' is already registered. Re-registering (will overwrite).`);
         }
 
         this.agents.set(agent.config.agentName, agent);
-        
+
         if (agent.initialize) {
             try {
+                // If initialize requires extensionUri (like ArchitectAgent does for loading files),
+                // this needs to be handled. For now, assume initialize can be called without it
+                // or that it's passed via agent config if needed by specific agents.
+                // For ArchitectAgent, its initialize was designed to take an optional vscode.Uri.
+                // This implies the orchestrator might need access to extension context or pass it.
+                // For simplicity here, we call it without. If agent.initialize MUST have it,
+                // this registration or agent's initialize signature needs adjustment.
                 await agent.initialize();
-                console.log(`[AgentOrchestrator] Agent '${agent.config.agentName}' initialized.`);
+                this.log(`Agent '${agent.config.agentName}' initialized.`);
             } catch (error) {
-                console.error(`[AgentOrchestrator] Error initializing agent '${agent.config.agentName}':`, error);
-                // Optionally, unregister if initialization fails critically
-                // this.agents.delete(agent.config.agentName);
+                this.logError(`Error initializing agent '${agent.config.agentName}':`, error);
             }
         }
-        console.log(`[AgentOrchestrator] Agent '${agent.config.agentName}' registered successfully.`);
+        this.log(`Agent '${agent.config.agentName}' registered successfully.`);
         this.agentBus.publish("agentRegistered", { agentName: agent.config.agentName });
     }
 
-    /**
-     * Unregisters an agent.
-     * @param agentName The name of the agent to unregister.
-     */
     async unregisterAgent(agentName: string): Promise<void> {
         const agent = this.agents.get(agentName);
         if (agent) {
             if (agent.destroy) {
                 try {
                     await agent.destroy();
-                    console.log(`[AgentOrchestrator] Agent '${agentName}' destroyed.`);
+                    this.log(`Agent '${agentName}' destroyed.`);
                 } catch (error) {
-                    console.error(`[AgentOrchestrator] Error destroying agent '${agentName}':`, error);
+                    this.logError(`Error destroying agent '${agentName}':`, error);
                 }
             }
             this.agents.delete(agentName);
-            console.log(`[AgentOrchestrator] Agent '${agentName}' unregistered.`);
+            this.log(`Agent '${agentName}' unregistered.`);
             this.agentBus.publish("agentUnregistered", { agentName });
         } else {
-            console.warn(`[AgentOrchestrator] Agent '${agentName}' not found for unregistration.`);
+            this.logWarn(`Agent '${agentName}' not found for unregistration.`);
         }
     }
 
-    /**
-     * Dispatches a task to a target agent or routes it if no target is specified.
-     * @param task The task to be dispatched.
-     * @param targetAgentName Optional name of the target agent.
-     * @returns A promise that resolves to an AgentResult.
-     */
     async dispatchTask(task: AgentTask, targetAgentName?: string): Promise<AgentResult> {
         let agentToExecute: IAgent | undefined;
+        let agentNameForExecution = targetAgentName;
 
-        if (targetAgentName) {
-            agentToExecute = this.agents.get(targetAgentName);
+        if (agentNameForExecution) {
+            agentToExecute = this.agents.get(agentNameForExecution);
             if (!agentToExecute) {
-                console.error(`[AgentOrchestrator] Target agent '${targetAgentName}' not found for task '${task.taskId}'.`);
-                return {
-                    taskId: task.taskId,
-                    status: 'failure',
-                    error: `Agent '${targetAgentName}' not found.`,
-                    output: null,
-                };
+                this.logError(`Target agent '${agentNameForExecution}' not found for task '${task.taskId}'.`);
+                return this.createFailureResult(task.taskId, `Agent '${agentNameForExecution}' not found.`);
             }
         } else {
-            // Basic routing logic: Use the first registered agent if no target specified.
-            // More sophisticated routing can be implemented here based on task.description, capabilities, etc.
-            if (this.agents.size > 0) {
-                // Fallback to the first registered agent for now
-                const firstAgentEntry = this.agents.entries().next();
-                if (firstAgentEntry.value) {
-                    agentToExecute = firstAgentEntry.value[1]; // Get the agent instance
-                    targetAgentName = firstAgentEntry.value[0]; // Get the agent name (key)
-                    console.log(`[AgentOrchestrator] No target agent specified for task '${task.taskId}'. Routing to first available agent: '${targetAgentName}'.`);
+            // Enhanced routing: Check for specific keywords for ArchitectAgent
+            if (task.description.toLowerCase().includes("design system") ||
+                task.description.toLowerCase().includes("blueprint") ||
+                task.description.toLowerCase().includes("/design_system")) {
+                agentToExecute = this.agents.get("ArchitectAgent");
+                agentNameForExecution = "ArchitectAgent";
+                if (agentToExecute) {
+                    this.log(`Routing task '${task.taskId}' to ArchitectAgent due to keywords.`);
                 }
             }
-            
-            if (!agentToExecute) {
-                console.error(`[AgentOrchestrator] No agent available to handle task '${task.taskId}'.`);
-                return {
-                    taskId: task.taskId,
-                    status: 'failure',
-                    error: "No available agent to handle the task.",
-                    output: null,
-                };
+
+            if (!agentToExecute) { // Fallback to first available if no specific routing matched
+                if (this.agents.size > 0) {
+                    const firstAgentEntry = this.agents.entries().next();
+                    if (firstAgentEntry.value) {
+                        agentToExecute = firstAgentEntry.value[1];
+                        agentNameForExecution = firstAgentEntry.value[0];
+                        this.log(`No target agent specified for task '${task.taskId}'. Routing to first available agent: '${agentNameForExecution}'.`);
+                    }
+                }
+            }
+
+            if (!agentToExecute || !agentNameForExecution) {
+                this.logError(`No agent available or routed to handle task '${task.taskId}'.`);
+                return this.createFailureResult(task.taskId, "No available agent to handle the task.");
             }
         }
-        
-        console.log(`[AgentOrchestrator] Dispatching task '${task.taskId}' to agent '${targetAgentName}'.`);
-        this.agentBus.publish("taskDispatched", { taskId: task.taskId, agentName: targetAgentName, taskDescription: task.description });
+
+        this.log(`Dispatching task '${task.taskId}' to agent '${agentNameForExecution}'. Description: "${task.description}"`);
+        this.agentBus.publish("taskDispatched", { taskId: task.taskId, agentName: agentNameForExecution, taskDescription: task.description });
 
         try {
-            // Provide the ModelRouter to the agent through the QuantumContext, if the agent needs it.
-            // This is a conceptual way; QuantumContext might need a method to set/get ModelRouter,
-            // or agents might access it through a global service locator if that pattern is used.
-            // For now, we assume agents can access it if they need it, or it's implicitly available.
-            // The QuantumContext passed here is the one initialized in the constructor.
+            // Pass the QuantumContext. ModelRouter is already available to ArchitectAgent via its constructor.
             const result = await agentToExecute.execute(task, this.quantumContext);
-            this.agentBus.publish("taskCompleted", { taskId: task.taskId, agentName: targetAgentName, status: result.status, resultSummary: result.output ? String(result.output).substring(0,100) + "..." : "N/A" });
+            this.agentBus.publish("taskCompleted", { taskId: task.taskId, agentName: agentNameForExecution, status: result.status, resultSummary: this.summarizeOutput(result.output) });
             return result;
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
-            console.error(`[AgentOrchestrator] Error executing task '${task.taskId}' on agent '${targetAgentName}':`, error);
-            this.agentBus.publish("taskFailed", { taskId: task.taskId, agentName: targetAgentName, error: errorMsg });
-            return {
-                taskId: task.taskId,
-                status: 'failure',
-                error: `Execution error on agent '${targetAgentName}': ${errorMsg}`,
-                output: null,
-            };
+            this.logError(`Error executing task '${task.taskId}' on agent '${agentNameForExecution}':`, error);
+            this.agentBus.publish("taskFailed", { taskId: task.taskId, agentName: agentNameForExecution, error: errorMsg });
+            return this.createFailureResult(task.taskId, `Execution error on agent '${agentNameForExecution}': ${errorMsg}`);
         }
     }
 
-    /**
-     * Conceptual method for orchestrating complex tasks that might involve multiple agents
-     * or a sequence of sub-tasks.
-     * @param initialTask The initial high-level task.
-     * @returns A promise that resolves to the final AgentResult of the complex task.
-     */
     async orchestrateComplexTask(initialTask: AgentTask): Promise<AgentResult> {
         this.log(`Orchestrating complex task: ${initialTask.description}`);
         this.agentBus.publish("complexTaskStarted", { taskId: initialTask.taskId, description: initialTask.description });
-
-        // STUB: This is a placeholder for more complex logic.
-        // For example, it could:
-        // 1. Decompose initialTask into subTasks.
-        // 2. Dispatch subTasks to appropriate agents (sequentially or in parallel).
-        // 3. Aggregate results from subTasks.
-        // 4. Handle errors and retries for subTasks.
-
-        // For now, just dispatch it as a simple task to a default or specified agent.
-        const result = await this.dispatchTask(initialTask, initialTask.targetAgent);
-
-        this.agentBus.publish("complexTaskEnded", { taskId: initialTask.taskId, status: result.status, finalOutputSummary: result.output ? String(result.output).substring(0,100) + "..." : "N/A" });
+        const result = await this.dispatchTask(initialTask, initialTask.targetAgent); // Simple dispatch for now
+        this.agentBus.publish("complexTaskEnded", { taskId: initialTask.taskId, status: result.status, finalOutputSummary: this.summarizeOutput(result.output) });
         return result;
     }
 
-    /**
-     * Retrieves a registered agent instance by its name.
-     * @param agentName The name of the agent.
-     * @returns The IAgent instance or undefined.
-     */
     getAgent(agentName: string): IAgent | undefined {
         return this.agents.get(agentName);
     }
 
-    /**
-     * Lists the names of all registered agents.
-     * @returns An array of agent names.
-     */
     listRegisteredAgentNames(): string[] {
         return Array.from(this.agents.keys());
     }
 
+    private createFailureResult(taskId: string, error: string): AgentResult {
+        return { taskId, status: 'failure', error, output: null };
+    }
+
+    private summarizeOutput(output: any): string {
+        if (!output) return "N/A";
+        if (typeof output === 'string') return output.substring(0, 100) + (output.length > 100 ? "..." : "");
+        if (output.blueprintYaml && typeof output.blueprintYaml === 'string') return `Blueprint YAML (first 100 chars): ${output.blueprintYaml.substring(0,100)}...`;
+        if (output.blueprintObject && output.blueprintObject.metadata) return `Blueprint: ${output.blueprintObject.metadata.blueprintName} v${output.blueprintObject.metadata.blueprintVersion}`;
+        return JSON.stringify(output).substring(0,100) + "...";
+    }
+
     private log(message: string, data?: any): void {
         const prefix = "[AgentOrchestrator]";
-        if (data !== undefined) {
-            console.log(`${prefix} ${message}`, data);
-        } else {
-            console.log(`${prefix} ${message}`);
-        }
+        if (data !== undefined) { console.log(`${prefix} ${message}`, data); }
+        else { console.log(`${prefix} ${message}`); }
+        // aiOutputChannel?.appendLine(`${prefix} ${message} ${data ? JSON.stringify(data) : ''}`); // If aiOutputChannel is accessible
+    }
+    private logWarn(message: string, data?: any): void {
+        const prefix = "[AgentOrchestrator Warning]";
+        if (data !== undefined) { console.warn(`${prefix} ${message}`, data); }
+        else { console.warn(`${prefix} ${message}`); }
+    }
+    private logError(message: string, data?: any): void {
+        const prefix = "[AgentOrchestrator Error]";
+        if (data !== undefined) { console.error(`${prefix} ${message}`, data); }
+        else { console.error(`${prefix} ${message}`); }
     }
 }
 ```
+
+**3. `nexus-ide/core/src/nexus/ui/webviews/chat/ChatViewProvider.ts`**

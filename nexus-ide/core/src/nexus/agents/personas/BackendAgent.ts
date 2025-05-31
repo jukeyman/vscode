@@ -9,8 +9,8 @@ export class BackendAgent extends BaseAgent implements IAgent {
             description: "Develops backend logic, APIs, data models, and handles server-side operations based on specifications from a system blueprint or direct tasks.",
             corePrompt: "You are a specialized Backend Developer AI. Your task is to implement server-side logic, create robust APIs, define data models, and manage database interactions according to the provided specifications. Focus on creating secure, scalable, and efficient backend services.",
             capabilities: [
-                "api_development", 
-                "data_modeling", 
+                "api_development",
+                "data_modeling",
                 "database_integration",
                 "business_logic_implementation",
                 "server_side_code_generation"
@@ -47,7 +47,7 @@ export class BackendAgent extends BaseAgent implements IAgent {
         if (task.description.toLowerCase().includes("create api endpoint") || task.description.toLowerCase().includes("develop api")) {
             const endpointPath = typeof task.userInput === 'string' ? task.userInput : task.userInput?.path || "/api/new_endpoint";
             const httpMethod = task.userInput?.method || "GET";
-            
+
             this.log(`Generating mock API endpoint: ${httpMethod} ${endpointPath}`);
             // In a real scenario, this would involve:
             // 1. Analyzing detailed specifications (from task.userInput or QuantumContext).
@@ -66,12 +66,12 @@ async def handle_${httpMethod.toLowerCase()}_${endpointPath.replace(/\//g, '_').
     return {"message": "Mock response for ${httpMethod} ${endpointPath}", "data": {}}
 
 # To integrate this router into your main FastAPI app:
-# app.include_router(router, prefix="/api/v1", tags=["mock_endpoints"]) 
+# app.include_router(router, prefix="/api/v1", tags=["mock_endpoints"])
             `;
             this.log(`Generated mock API code for ${httpMethod} ${endpointPath}.`);
-            return { 
-                taskId: task.taskId, 
-                status: 'success', 
+            return {
+                taskId: task.taskId,
+                status: 'success',
                 output: {
                     endpointPath: endpointPath,
                     method: httpMethod,
@@ -79,14 +79,14 @@ async def handle_${httpMethod.toLowerCase()}_${endpointPath.replace(/\//g, '_').
                     language: "python",
                     framework: "FastAPI" // Example
                 },
-                logs: [`Mock API code for ${httpMethod} ${endpointPath} generated.`] 
+                logs: [`Mock API code for ${httpMethod} ${endpointPath} generated.`]
             };
         }
 
         this.log(`Task '${task.description}' not directly handled by mock logic.`, "Returning failure.");
-        return { 
-            taskId: task.taskId, 
-            status: 'failure', 
+        return {
+            taskId: task.taskId,
+            status: 'failure',
             error: "Unknown task or insufficient details for BackendAgent's mock execution.",
             output: null
         };
