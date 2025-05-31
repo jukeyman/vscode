@@ -28,17 +28,12 @@ export class AgentOrchestrator {
 
         this.agents.set(agent.config.agentName, agent);
 
-        // The `initialize` method of agents might require `extensionUri` which is not available here.
-        // This was handled in `extension.ts` by calling `agent.initialize(context.extensionUri)` before registration.
-        // If an agent's `initialize` is self-contained or doesn't need extension-specific paths at this stage,
-        // it could be called here. For now, assuming initialization requiring extension context is done prior to registration.
-        if (agent.initialize && typeof agent.initialize === 'function') {
-            // If agent.initialize doesn't need arguments or can handle undefined:
-            // await agent.initialize();
-            // For ArchitectAgent and BackendForgeAgent, initialize(extensionUri) is called in extension.ts
-            this.log(`Agent '${agent.config.agentName}' was pre-initialized before registration or its initialize method doesn't require parameters here.`);
-        }
-        this.log(`Agent '${agent.config.agentName}' registered successfully.`);
+        // Initialization is now expected to be done in extension.ts before registration,
+        // especially if it needs extensionUri.
+        // if (agent.initialize && typeof agent.initialize === 'function') {
+        //     await agent.initialize();
+        // }
+        this.log(`Agent '${agent.config.agentName}' registered successfully (assumed pre-initialized if needed).`);
         this.agentBus.publish("agentRegistered", { agentName: agent.config.agentName });
     }
 
@@ -84,11 +79,19 @@ export class AgentOrchestrator {
                 }
             } else if (taskDescLower.includes("generate backend for blueprint") ||
                        taskDescLower.includes("/generate_backend") ||
-                       (task.userInput?.blueprint && task.userInput.blueprint.backendSpecification) ) { // Check if blueprint for backend exists
+                       (task.userInput?.blueprint?.backendSpecification)) {
                 agentToExecute = this.agents.get("BackendForgeAgent");
                 agentNameForExecution = "BackendForgeAgent";
                 if (agentToExecute) {
                     this.log(`Routing task '${task.taskId}' to BackendForgeAgent due to backend generation keywords or blueprint content.`);
+                }
+            } else if (taskDescLower.includes("generate frontend for blueprint") ||
+                       taskDescLower.includes("/generate_frontend") ||
+                       (task.userInput?.blueprint?.frontendSpecification)) {
+                agentToExecute = this.agents.get("FrontendForgeAgent");
+                agentNameForExecution = "FrontendForgeAgent";
+                if (agentToExecute) {
+                    this.log(`Routing task '${task.taskId}' to FrontendForgeAgent due to frontend generation keywords or blueprint content.`);
                 }
             }
             // Add more routing rules for other agents here...
@@ -150,7 +153,10 @@ export class AgentOrchestrator {
         if (typeof output === 'string') return output.substring(0, 100) + (output.length > 100 ? "..." : "");
         if (output.blueprintYaml && typeof output.blueprintYaml === 'string') return `Blueprint YAML (first 100 chars): ${output.blueprintYaml.substring(0,100)}...`;
         if (output.blueprintObject && output.blueprintObject.projectMetadata) return `Blueprint: ${output.blueprintObject.projectMetadata.projectName || output.blueprintObject.projectMetadata.blueprintName}`;
-        if (output.fileSet && typeof output.fileSet === 'object') return `Generated ${Object.keys(output.fileSet).length} backend files.`;
+        if (output.fileSet && typeof output.fileSet === 'object') {
+            const fileCount = Object.keys(output.fileSet).length;
+            return `Generated ${fileCount} files. (${Object.keys(output.fileSet).slice(0,2).join(', ')}${fileCount > 2 ? '...' : ''})`;
+        }
         return JSON.stringify(output).substring(0,100) + "...";
     }
 
@@ -158,8 +164,6 @@ export class AgentOrchestrator {
         const prefix = "[AgentOrchestrator]";
         if (data !== undefined) { console.log(`${prefix} ${message}`, data); }
         else { console.log(`${prefix} ${message}`); }
-        // Consider using vscode.OutputChannel if this code runs in extension host and aiOutputChannel is accessible
-        // aiOutputChannel?.appendLine(`${prefix} ${message} ${data ? JSON.stringify(data) : ''}`);
     }
     private logWarn(message: string, data?: any): void {
         const prefix = "[AgentOrchestrator Warning]";

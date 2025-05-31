@@ -10,7 +10,8 @@ import { QuantumContext } from './nexus/context/QuantumContext';
 import { AgentBus } from './nexus/agents/AgentBus';
 import { AgentOrchestrator } from './nexus/agents/AgentOrchestrator';
 import { ArchitectAgent } from './nexus/agents/personas/ArchitectAgent';
-import { BackendForgeAgent } from './nexus/agents/personas/BackendForgeAgent'; // Added BackendForgeAgent
+import { BackendForgeAgent } from './nexus/agents/personas/BackendForgeAgent';
+import { FrontendForgeAgent } from './nexus/agents/personas/FrontendForgeAgent'; // Added FrontendForgeAgent
 // UI Components
 import { ChatViewProvider } from './nexus/ui/webviews/chat/ChatViewProvider';
 
@@ -54,7 +55,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlS
     htmlContent = htmlContent.replace(/\$\{scriptUri\}/g, scriptUri.toString());
 
     const stylesPathOnDisk = vscode.Uri.joinPath(extensionUri, 'out', 'webviews', nodePath.dirname(htmlSubPath), 'chat.css'); // Assuming chat.css for chat webview
-    if (htmlSubPath.startsWith('chat') && fs.existsSync(stylesPathOnDisk.fsPath)) { // Only add stylesUri if it's for chat and css exists
+    if (htmlSubPath.startsWith('chat') && fs.existsSync(stylesPathOnDisk.fsPath)) {
         const stylesUri = webview.asWebviewUri(stylesPathOnDisk);
         htmlContent = htmlContent.replace(/\$\{stylesUri\}/g, stylesUri.toString());
     } else {
@@ -101,13 +102,25 @@ export async function activate(context: vscode.ExtensionContext) {
     // Instantiate and Register BackendForgeAgent
     const backendForgeAgent = new BackendForgeAgent(modelRouter);
     try {
-        await backendForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        await backendForgeAgent.initialize(context.extensionUri);
         agentOrchestrator.registerAgent(backendForgeAgent);
         aiOutputChannel.appendLine('BackendForgeAgent registered successfully.');
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         aiOutputChannel.appendLine(`Failed to initialize or register BackendForgeAgent: ${errorMsg}`);
         vscode.window.showErrorMessage(`BackendForgeAgent could not be initialized: ${errorMsg}`);
+    }
+
+    // Instantiate and Register FrontendForgeAgent
+    const frontendForgeAgent = new FrontendForgeAgent(modelRouter);
+    try {
+        await frontendForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        agentOrchestrator.registerAgent(frontendForgeAgent);
+        aiOutputChannel.appendLine('FrontendForgeAgent registered successfully.');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        aiOutputChannel.appendLine(`Failed to initialize or register FrontendForgeAgent: ${errorMsg}`);
+        vscode.window.showErrorMessage(`FrontendForgeAgent could not be initialized: ${errorMsg}`);
     }
 
     // Initialize Chat View Provider
@@ -137,13 +150,14 @@ export async function activate(context: vscode.ExtensionContext) {
     }));
 
     // Stubs for other commands from previous phases - ensure their full implementations are present
+    // (These would typically be moved to separate files and imported for cleaner organization)
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.listAgents', async () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.validateAgentDefinitions', async () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.createAgentDefinition', async () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.addAgentToolPython', async () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => { /* ... */ }));
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openSimulator', async () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.generateSystemBlueprint', async () => { /* ... */ }));
+    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.generateSystemBlueprint', async () => { /* ... */ })); // This is the LLM-driven one
 
 
     aiOutputChannel.appendLine('Nexus IDE - AI Ecosystem Core activation completed.');

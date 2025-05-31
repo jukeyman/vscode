@@ -61,15 +61,23 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                             this.addMessageToChat('system', "Usage: /generate_backend <path_to_blueprint.yaml>");
                             return;
                         }
-                        const blueprintPath = parts.slice(1).join(" "); // Handle spaces in path
+                        const blueprintPath = parts.slice(1).join(" ");
                         this.addMessageToChat('system', `Received request to generate backend from: ${blueprintPath}`);
-
-                        // Asynchronously trigger the backend generation
-                        this.triggerBackendGeneration(blueprintPath, Date.now().toString() + Math.random().toString(36).substring(2));
+                        this.triggerBackendGeneration(blueprintPath, this.generateUniqueTaskId());
                         return;
-                    } else {
-                        // Default mock response for other messages
-                        const mockResponse = `Nexus AI (mock response): You said "${userMessage}". Full agent routing for general queries is pending. Try '/design_system your idea' or '/generate_backend blueprints/your_blueprint.yaml'.`;
+                    } else if (lowerUserMessage.startsWith("/generate_frontend")) {
+                        const parts = userMessage.split(/\s+/);
+                        if (parts.length < 2) {
+                            this.addMessageToChat('system', "Usage: /generate_frontend <path_to_blueprint.yaml>");
+                            return;
+                        }
+                        const blueprintPath = parts.slice(1).join(" ");
+                        this.addMessageToChat('system', `Received request to generate frontend from: ${blueprintPath}`);
+                        this.triggerFrontendGeneration(blueprintPath, this.generateUniqueTaskId());
+                        return;
+                    }
+                    else {
+                        const mockResponse = `Nexus AI (mock response): You said "${userMessage}". Supported commands: /design_system <description>, /generate_backend <path_to_blueprint.yaml>, /generate_frontend <path_to_blueprint.yaml>, /createfile <name> <content>.`;
                         this.addMessageToChat('agent', mockResponse);
                     }
                     break;
@@ -97,10 +105,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
                 case 'webviewReady':
                     console.log("ChatViewProvider: Webview reported ready.");
-                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "design a system for an online bookstore" or "/generate_backend blueprints/your_blueprint.yaml".');
+                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", "/generate_backend blueprints/file.yaml", or "/generate_frontend blueprints/file.yaml".');
                     break;
             }
         });
+    }
+
+    private generateUniqueTaskId(): string {
+        return Date.now().toString() + Math.random().toString(36).substring(2);
     }
 
     private async triggerArchitectAgent(userMessage: string) {
@@ -111,7 +123,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         };
 
         const task: AgentTask = {
-            taskId: Date.now().toString() + Math.random().toString(36).substring(2),
+            taskId: this.generateUniqueTaskId(),
             description: taskDescription,
             userInput: userInputPayload,
             priority: 'medium'
@@ -139,17 +151,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     }
 
                     const blueprintName = result.output.blueprintObject?.projectMetadata?.projectName ||
-                                          result.output.blueprintObject?.metadata?.blueprintName || // Fallback to blueprintName from metadata
+                                          result.output.blueprintObject?.metadata?.blueprintName ||
                                           'generated_blueprint';
                     const safeBlueprintName = blueprintName.replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
-                    const timestamp = new Date().toISOString().replace(/[.:T]/g, '-').slice(0,-5);
+                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1); // Adjusted timestamp format
                     const blueprintFileName = `${safeBlueprintName}_${timestamp}.yaml`;
                     const blueprintFilePath = path.join(blueprintsDir, blueprintFileName);
 
                     await vscode.workspace.fs.writeFile(vscode.Uri.file(blueprintFilePath), Buffer.from(result.output.blueprintYaml, 'utf8'));
 
-                    const relativeBlueprintPath = path.relative(rootPath, blueprintFilePath);
-                    this.addMessageToChat('system', `Blueprint saved to: ${relativeBlueprintPath.replace(/\\/g, '/')}`); // Normalize path for display
+                    const relativeBlueprintPath = path.relative(rootPath, blueprintFilePath).replace(/\\/g, '/');
+                    this.addMessageToChat('system', `Blueprint saved to: ${relativeBlueprintPath}`);
 
                     vscode.window.showInformationMessage(`Blueprint saved: ${blueprintFileName}`, 'Open File')
                         .then(selection => {
@@ -180,9 +192,17 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     }
 
     private async triggerBackendGeneration(blueprintPathRelative: string, taskId: string) {
+        await this.triggerForgeAgent(blueprintPathRelative, taskId, "BackendForgeAgent", "backend");
+    }
+
+    private async triggerFrontendGeneration(blueprintPathRelative: string, taskId: string) {
+        await this.triggerForgeAgent(blueprintPathRelative, taskId, "FrontendForgeAgent", "frontend");
+    }
+
+    private async triggerForgeAgent(blueprintPathRelative: string, taskId: string, agentName: "BackendForgeAgent" | "FrontendForgeAgent", projectType: "backend" | "frontend") {
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
-            this.addMessageToChat('system', "Error: No workspace open. Cannot read blueprint file.");
+            this.addMessageToChat('system', `Error: No workspace open. Cannot read blueprint file for ${projectType} generation.`);
             return;
         }
         const workspaceRootPath = workspaceFolders[0].uri.fsPath;
@@ -191,77 +211,77 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
         let blueprintObject: any;
         try {
-            this.addMessageToChat('system', `Reading blueprint: ${blueprintPathRelative}...`);
+            this.addMessageToChat('system', `Reading blueprint: ${blueprintPathRelative} for ${agentName}...`);
             const blueprintContentBytes = await vscode.workspace.fs.readFile(blueprintUri);
             const blueprintContent = Buffer.from(blueprintContentBytes).toString('utf8');
             blueprintObject = yaml.load(blueprintContent);
             if (typeof blueprintObject !== 'object' || blueprintObject === null) {
                 throw new Error("Blueprint content is not a valid YAML object.");
             }
-            this.addMessageToChat('system', `Blueprint '${blueprintPathRelative}' parsed successfully.`);
+            this.addMessageToChat('system', `Blueprint '${blueprintPathRelative}' parsed successfully for ${agentName}.`);
         } catch (e) {
             const error = e as Error;
-            this.addMessageToChat('system', `Error reading or parsing blueprint file '${blueprintPathRelative}': ${error.message}`);
-            console.error(`ChatViewProvider: Error reading/parsing blueprint ${blueprintFullPath}:`, error);
+            this.addMessageToChat('system', `Error reading or parsing blueprint file '${blueprintPathRelative}' for ${agentName}: ${error.message}`);
+            console.error(`ChatViewProvider: Error reading/parsing blueprint ${blueprintFullPath} for ${agentName}:`, error);
             return;
         }
 
         const task: AgentTask = {
             taskId: taskId,
-            description: `Generate backend code for blueprint: ${blueprintPathRelative}`,
+            description: `Generate ${projectType} code for blueprint: ${blueprintPathRelative}`,
             userInput: { blueprint: blueprintObject }
         };
 
-        this.addMessageToChat('system', `BackendForgeAgent is processing blueprint: "${blueprintPathRelative.substring(0,50)}..."`);
+        this.addMessageToChat('system', `${agentName} is processing blueprint: "${blueprintPathRelative.substring(0,50)}..."`);
         try {
-            const result = await this._agentOrchestrator.dispatchTask(task, "BackendForgeAgent");
+            const result = await this._agentOrchestrator.dispatchTask(task, agentName);
 
             if (result.status === 'success' && result.output?.fileSet) {
                 const fileSet = result.output.fileSet as Record<string, string>;
                 const fileCount = Object.keys(fileSet).length;
-                this.addMessageToChat('agent', `BackendForgeAgent: Backend code (${fileCount} files) generated successfully!`);
+                this.addMessageToChat('agent', `${agentName}: ${projectType} code (${fileCount} files) generated successfully!`);
 
                 const blueprintName = blueprintObject.projectMetadata?.projectName ||
                                       blueprintObject.metadata?.blueprintName ||
                                       path.basename(blueprintPathRelative, path.extname(blueprintPathRelative));
                 const safeBlueprintName = blueprintName.replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
                 const timestamp = new Date().toISOString().replace(/[.:T]/g, '-').slice(0,-5);
-                const outputDirRelative = path.join('generated_projects', `backend_${safeBlueprintName}_${timestamp}`);
+                const outputDirRelative = path.join('generated_projects', `${projectType}_${safeBlueprintName}_${timestamp}`);
                 const outputDirFull = path.join(workspaceRootPath, outputDirRelative);
 
                 await vscode.workspace.fs.createDirectory(vscode.Uri.file(outputDirFull));
                 this.addMessageToChat('system', `Output directory created: ${outputDirRelative.replace(/\\/g, '/')}`);
 
                 let filesWritten = 0;
-                for (const relativeFilePath in fileSet) {
-                    const fileContent = fileSet[relativeFilePath];
-                    const absoluteFilePath = path.join(outputDirFull, relativeFilePath);
+                for (const relativeFilePathInSet in fileSet) { // relativeFilePathInSet is like 'src/main.js'
+                    const fileContent = fileSet[relativeFilePathInSet];
+                    const absoluteFilePath = path.join(outputDirFull, relativeFilePathInSet);
                     const fileDir = path.dirname(absoluteFilePath);
 
                     try {
-                        await vscode.workspace.fs.createDirectory(vscode.Uri.file(fileDir)); // Ensure parent directory exists
+                        await vscode.workspace.fs.createDirectory(vscode.Uri.file(fileDir));
                         await vscode.workspace.fs.writeFile(vscode.Uri.file(absoluteFilePath), Buffer.from(fileContent, 'utf8'));
                         filesWritten++;
                     } catch (fileWriteError) {
                         const fwe = fileWriteError as Error;
-                        this.addMessageToChat('system', `Error writing file ${relativeFilePath}: ${fwe.message}`);
+                        this.addMessageToChat('system', `Error writing file ${relativeFilePathInSet}: ${fwe.message}`);
                         console.error(`Error writing file ${absoluteFilePath}:`, fwe);
                     }
                 }
-                this.addMessageToChat('system', `Backend code (${filesWritten}/${fileCount} files) saved to: ${outputDirRelative.replace(/\\/g, '/')}`);
-                vscode.window.showInformationMessage(`Backend code generated in ${outputDirRelative}.`);
+                this.addMessageToChat('system', `${projectType} code (${filesWritten}/${fileCount} files) saved to: ${outputDirRelative.replace(/\\/g, '/')}`);
+                vscode.window.showInformationMessage(`${projectType} code generated in ${outputDirRelative}.`);
 
             } else {
-                const errorDetail = result.error || 'Unknown error from BackendForgeAgent.';
-                this.addMessageToChat('agent', `BackendForgeAgent Error: ${errorDetail}`);
+                const errorDetail = result.error || `Unknown error from ${agentName}.`;
+                this.addMessageToChat('agent', `${agentName} Error: ${errorDetail}`);
                 if (result.output?.rawOutput) {
                     this.addMessageToChat('system', `Debug: Raw LLM output (first 500 chars):\n${String(result.output.rawOutput).substring(0, 500)}...`);
                 }
             }
         } catch (e) {
             const error = e as Error;
-            this.addMessageToChat('system', `Error dispatching task to BackendForgeAgent: ${error.message}`);
-            console.error("ChatViewProvider: Error dispatching to BackendForgeAgent:", error);
+            this.addMessageToChat('system', `Error dispatching task to ${agentName}: ${error.message}`);
+            console.error(`ChatViewProvider: Error dispatching to ${agentName}:`, error);
         }
     }
 
