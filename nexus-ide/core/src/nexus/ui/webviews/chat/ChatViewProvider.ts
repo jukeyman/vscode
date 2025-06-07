@@ -50,8 +50,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     const lowerUserMessage = userMessage.toLowerCase();
                     const parts = userMessage.split(/\s+/);
                     const command = parts[0].toLowerCase();
-                    const blueprintPathArgument = parts.length > 1 ? parts.slice(1).join(" ") : "";
-
+                    const blueprintPathArgument = parts.length > 1 ? parts.slice(1).join(" ") : ""; // Handle spaces in path
 
                     if (command === "/design_system" || lowerUserMessage.startsWith("design a system for") || lowerUserMessage.startsWith("create a system blueprint for")) {
                         this.triggerArchitectAgent(userMessage);
@@ -90,9 +89,16 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                         }
                         this.addMessageToChat('system', `Received request to generate tests from: ${blueprintPathArgument}`);
                         this.triggerForgeAgent(blueprintPathArgument, "TestingForgeAgent", `Generate test suites for blueprint: ${blueprintPathArgument}`, "tests");
+                    } else if (command === "/generate_documentation") {
+                        if (!blueprintPathArgument) {
+                            this.addMessageToChat('system', "Usage: /generate_documentation <path_to_blueprint.yaml>");
+                            return;
+                        }
+                        this.addMessageToChat('system', `Received request to generate documentation from: ${blueprintPathArgument}`);
+                        this.triggerForgeAgent(blueprintPathArgument, "DocumentationForgeAgent", `Generate documentation for blueprint: ${blueprintPathArgument}`, "documentation");
                     }
                     else if (userMessage.startsWith("/")) {
-                         this.addMessageToChat('system', `Unknown command: ${command}. Supported commands: /design_system, /generate_backend, /generate_frontend, /generate_database, /generate_infrastructure, /generate_tests, /createfile.`);
+                         this.addMessageToChat('system', `Unknown command: ${command}. Supported commands: /design_system, /generate_backend, /generate_frontend, /generate_database, /generate_infrastructure, /generate_tests, /generate_documentation, /createfile.`);
                     }
                     else {
                         const mockResponse = `Nexus AI (mock response): You said "${userMessage}". For specific actions, use commands like /design_system, /generate_backend <path>, etc.`;
@@ -123,7 +129,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
                 case 'webviewReady':
                     console.log("ChatViewProvider: Webview reported ready.");
-                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", "/generate_tests blueprints/file.yaml", etc.');
+                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", "/generate_documentation blueprints/file.yaml", etc.');
                     break;
             }
         });
@@ -172,7 +178,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                                           result.output.blueprintObject?.metadata?.blueprintName ||
                                           'generated_blueprint';
                     const safeBlueprintName = blueprintName.replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
-                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1); // More FS friendly timestamp
+                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1);
                     const blueprintFileName = `${safeBlueprintName}_${timestamp}.yaml`;
                     const blueprintFilePath = path.join(blueprintsDir, blueprintFileName);
 
@@ -211,9 +217,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     private async triggerForgeAgent(
         blueprintPathRelative: string,
-        agentName: "BackendForgeAgent" | "FrontendForgeAgent" | "DatabaseForgeAgent" | "InfrastructureForgeAgent" | "TestingForgeAgent",
+        agentName: "BackendForgeAgent" | "FrontendForgeAgent" | "DatabaseForgeAgent" | "InfrastructureForgeAgent" | "TestingForgeAgent" | "DocumentationForgeAgent",
         taskDescriptionPrefix: string,
-        projectType: "backend" | "frontend" | "database" | "infrastructure" | "tests"
+        projectType: "backend" | "frontend" | "database" | "infrastructure" | "tests" | "documentation"
     ) {
         const taskId = this.generateUniqueTaskId();
         const workspaceFolders = vscode.workspace.workspaceFolders;

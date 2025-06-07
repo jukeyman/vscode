@@ -64,56 +64,44 @@ export class AgentOrchestrator {
         } else {
             // Task-based routing
             const taskDescLower = task.description.toLowerCase();
+            const userInput = task.userInput as any; // Type assertion for easier access to blueprint sections
+
             if (taskDescLower.includes("design system") ||
                 taskDescLower.includes("blueprint") ||
                 taskDescLower.includes("/design_system")) {
-                agentToExecute = this.agents.get("ArchitectAgent");
                 agentNameForExecution = "ArchitectAgent";
-                if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to ArchitectAgent due to design keywords.`);
-                }
-            } else if (taskDescLower.includes("generate backend for blueprint") ||
+            } else if (taskDescLower.includes("generate backend") ||
                        taskDescLower.includes("/generate_backend") ||
-                       (task.userInput?.blueprint?.backendSpecification)) {
-                agentToExecute = this.agents.get("BackendForgeAgent");
+                       (userInput?.blueprint?.backendSpecification)) {
                 agentNameForExecution = "BackendForgeAgent";
-                if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to BackendForgeAgent due to backend generation keywords.`);
-                }
-            } else if (taskDescLower.includes("generate frontend for blueprint") ||
+            } else if (taskDescLower.includes("generate frontend") ||
                        taskDescLower.includes("/generate_frontend") ||
-                       (task.userInput?.blueprint?.frontendSpecification)) {
-                agentToExecute = this.agents.get("FrontendForgeAgent");
+                       (userInput?.blueprint?.frontendSpecification)) {
                 agentNameForExecution = "FrontendForgeAgent";
-                if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to FrontendForgeAgent due to frontend generation keywords.`);
-                }
-            } else if (taskDescLower.includes("generate database for blueprint") ||
+            } else if (taskDescLower.includes("generate database") ||
                        taskDescLower.includes("/generate_database") ||
-                       (task.userInput?.blueprint?.databaseSpecification)) {
-                agentToExecute = this.agents.get("DatabaseForgeAgent");
+                       (userInput?.blueprint?.databaseSpecification)) {
                 agentNameForExecution = "DatabaseForgeAgent";
-                if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to DatabaseForgeAgent due to database generation keywords.`);
-                }
-            } else if (taskDescLower.includes("generate infrastructure for blueprint") ||
+            } else if (taskDescLower.includes("generate infrastructure") ||
                        taskDescLower.includes("/generate_infrastructure") ||
-                       (task.userInput?.blueprint?.infrastructureSpecification)) {
-                agentToExecute = this.agents.get("InfrastructureForgeAgent");
+                       (userInput?.blueprint?.infrastructureSpecification)) {
                 agentNameForExecution = "InfrastructureForgeAgent";
-                if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to InfrastructureForgeAgent due to infrastructure generation keywords.`);
-                }
-            } else if (taskDescLower.includes("generate tests for blueprint") ||
+            } else if (taskDescLower.includes("generate tests") ||
                        taskDescLower.includes("/generate_tests") ||
-                       (task.userInput?.blueprint?.testingStrategy)) {
-                agentToExecute = this.agents.get("TestingForgeAgent");
+                       (userInput?.blueprint?.testingStrategy)) {
                 agentNameForExecution = "TestingForgeAgent";
+            } else if (taskDescLower.includes("generate documentation") ||
+                       taskDescLower.includes("/generate_documentation") ||
+                       (userInput?.blueprint && Object.keys(userInput.blueprint).length > 0)) { // Generic check for blueprint for docs
+                agentNameForExecution = "DocumentationForgeAgent";
+            }
+
+            if (agentNameForExecution) {
+                agentToExecute = this.agents.get(agentNameForExecution);
                 if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to TestingForgeAgent due to test generation keywords.`);
+                    this.log(`Routing task '${task.taskId}' to ${agentNameForExecution} due to keywords or blueprint content.`);
                 }
             }
-            // Add more routing rules for other agents here...
 
             if (!agentToExecute) { // Fallback if no specific routing matched
                 if (this.agents.size > 0) {
@@ -196,3 +184,5 @@ export class AgentOrchestrator {
     }
 }
 ```
+
+**3. `nexus-ide/core/src/nexus/ui/webviews/chat/ChatViewProvider.ts`**
