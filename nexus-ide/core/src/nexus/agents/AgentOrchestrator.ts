@@ -28,8 +28,6 @@ export class AgentOrchestrator {
 
         this.agents.set(agent.config.agentName, agent);
 
-        // Initialization (like loading prompts) is expected to be called in extension.ts
-        // using agent.initialize(context.extensionUri) before this registration.
         this.log(`Agent '${agent.config.agentName}' registered successfully (assumed pre-initialized if needed).`);
         this.agentBus.publish("agentRegistered", { agentName: agent.config.agentName });
     }
@@ -97,6 +95,14 @@ export class AgentOrchestrator {
                 agentNameForExecution = "DatabaseForgeAgent";
                 if (agentToExecute) {
                     this.log(`Routing task '${task.taskId}' to DatabaseForgeAgent due to database generation keywords.`);
+                }
+            } else if (taskDescLower.includes("generate infrastructure for blueprint") ||
+                       taskDescLower.includes("/generate_infrastructure") ||
+                       (task.userInput?.blueprint?.infrastructureSpecification)) {
+                agentToExecute = this.agents.get("InfrastructureForgeAgent");
+                agentNameForExecution = "InfrastructureForgeAgent";
+                if (agentToExecute) {
+                    this.log(`Routing task '${task.taskId}' to InfrastructureForgeAgent due to infrastructure generation keywords.`);
                 }
             }
             // Add more routing rules for other agents here...
@@ -182,3 +188,5 @@ export class AgentOrchestrator {
     }
 }
 ```
+
+**3. `nexus-ide/core/src/nexus/ui/webviews/chat/ChatViewProvider.ts`**

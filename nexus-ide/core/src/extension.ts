@@ -12,7 +12,8 @@ import { AgentOrchestrator } from './nexus/agents/AgentOrchestrator';
 import { ArchitectAgent } from './nexus/agents/personas/ArchitectAgent';
 import { BackendForgeAgent } from './nexus/agents/personas/BackendForgeAgent';
 import { FrontendForgeAgent } from './nexus/agents/personas/FrontendForgeAgent';
-import { DatabaseForgeAgent } from './nexus/agents/personas/DatabaseForgeAgent'; // Added DatabaseForgeAgent
+import { DatabaseForgeAgent } from './nexus/agents/personas/DatabaseForgeAgent';
+import { InfrastructureForgeAgent } from './nexus/agents/personas/InfrastructureForgeAgent'; // Added InfrastructureForgeAgent
 // UI Components
 import { ChatViewProvider } from './nexus/ui/webviews/chat/ChatViewProvider';
 
@@ -127,13 +128,25 @@ export async function activate(context: vscode.ExtensionContext) {
     // Instantiate and Register DatabaseForgeAgent
     const databaseForgeAgent = new DatabaseForgeAgent(modelRouter);
     try {
-        await databaseForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        await databaseForgeAgent.initialize(context.extensionUri);
         agentOrchestrator.registerAgent(databaseForgeAgent);
         aiOutputChannel.appendLine('DatabaseForgeAgent registered successfully.');
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         aiOutputChannel.appendLine(`Failed to initialize or register DatabaseForgeAgent: ${errorMsg}`);
         vscode.window.showErrorMessage(`DatabaseForgeAgent could not be initialized: ${errorMsg}`);
+    }
+
+    // Instantiate and Register InfrastructureForgeAgent
+    const infrastructureForgeAgent = new InfrastructureForgeAgent(modelRouter);
+    try {
+        await infrastructureForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        agentOrchestrator.registerAgent(infrastructureForgeAgent);
+        aiOutputChannel.appendLine('InfrastructureForgeAgent registered successfully.');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        aiOutputChannel.appendLine(`Failed to initialize or register InfrastructureForgeAgent: ${errorMsg}`);
+        vscode.window.showErrorMessage(`InfrastructureForgeAgent could not be initialized: ${errorMsg}`);
     }
 
     // Initialize Chat View Provider
