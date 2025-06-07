@@ -48,7 +48,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                     const userMessage = message.text;
                     this.addMessageToChat('user', userMessage);
                     const lowerUserMessage = userMessage.toLowerCase();
-                    const parts = userMessage.split(/\s+/); // Split by one or more spaces
+                    const parts = userMessage.split(/\s+/);
                     const command = parts[0].toLowerCase();
                     const blueprintPathArgument = parts.length > 1 ? parts.slice(1).join(" ") : "";
 
@@ -83,11 +83,18 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                         }
                         this.addMessageToChat('system', `Received request to generate infrastructure artifacts from: ${blueprintPathArgument}`);
                         this.triggerForgeAgent(blueprintPathArgument, "InfrastructureForgeAgent", `Generate infrastructure artifacts for blueprint: ${blueprintPathArgument}`, "infrastructure");
+                    } else if (command === "/generate_tests") {
+                        if (!blueprintPathArgument) {
+                            this.addMessageToChat('system', "Usage: /generate_tests <path_to_blueprint.yaml>");
+                            return;
+                        }
+                        this.addMessageToChat('system', `Received request to generate tests from: ${blueprintPathArgument}`);
+                        this.triggerForgeAgent(blueprintPathArgument, "TestingForgeAgent", `Generate test suites for blueprint: ${blueprintPathArgument}`, "tests");
                     }
-                    else if (userMessage.startsWith("/")) { // Handle unknown slash commands
-                         this.addMessageToChat('system', `Unknown command: ${command}. Supported commands: /design_system, /generate_backend, /generate_frontend, /generate_database, /generate_infrastructure, /createfile.`);
+                    else if (userMessage.startsWith("/")) {
+                         this.addMessageToChat('system', `Unknown command: ${command}. Supported commands: /design_system, /generate_backend, /generate_frontend, /generate_database, /generate_infrastructure, /generate_tests, /createfile.`);
                     }
-                    else { // Default to a general message if no slash command matched
+                    else {
                         const mockResponse = `Nexus AI (mock response): You said "${userMessage}". For specific actions, use commands like /design_system, /generate_backend <path>, etc.`;
                         this.addMessageToChat('agent', mockResponse);
                     }
@@ -116,7 +123,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
                 case 'webviewReady':
                     console.log("ChatViewProvider: Webview reported ready.");
-                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", or "/generate_backend blueprints/file.yaml", etc.');
+                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", "/generate_tests blueprints/file.yaml", etc.');
                     break;
             }
         });
@@ -165,7 +172,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                                           result.output.blueprintObject?.metadata?.blueprintName ||
                                           'generated_blueprint';
                     const safeBlueprintName = blueprintName.replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
-                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1);
+                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1); // More FS friendly timestamp
                     const blueprintFileName = `${safeBlueprintName}_${timestamp}.yaml`;
                     const blueprintFilePath = path.join(blueprintsDir, blueprintFileName);
 
@@ -204,9 +211,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
     private async triggerForgeAgent(
         blueprintPathRelative: string,
-        agentName: "BackendForgeAgent" | "FrontendForgeAgent" | "DatabaseForgeAgent" | "InfrastructureForgeAgent",
+        agentName: "BackendForgeAgent" | "FrontendForgeAgent" | "DatabaseForgeAgent" | "InfrastructureForgeAgent" | "TestingForgeAgent",
         taskDescriptionPrefix: string,
-        projectType: "backend" | "frontend" | "database" | "infrastructure"
+        projectType: "backend" | "frontend" | "database" | "infrastructure" | "tests"
     ) {
         const taskId = this.generateUniqueTaskId();
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -215,8 +222,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             return;
         }
         const workspaceRootPath = workspaceFolders[0].uri.fsPath;
-        // Normalize blueprintPathRelative to ensure it's treated as relative from workspace root
-        const normalizedBlueprintPath = path.normalize(blueprintPathRelative).replace(/^(\.\.[/\\])+/, ''); // Remove leading ../
+        const normalizedBlueprintPath = path.normalize(blueprintPathRelative).replace(/^(\.\.[/\\])+/, '');
         const blueprintFullPath = path.join(workspaceRootPath, normalizedBlueprintPath);
         const blueprintUri = vscode.Uri.file(blueprintFullPath);
 
@@ -280,7 +286,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                         console.error(`Error writing file ${absoluteFilePath}:`, fwe);
                     }
                 }
-                this.addMessageToChat('system', `${projectType} artifacts (${filesWritten}/${fileCount} files) saved to: generated_projects/${baseOutputDirName}`);
+                this.addMessageToChat('system', `${projectType} artifacts (${filesWritten}/${fileCount} files) saved to: generated_projects/${baseOutputDirName.replace(/\\/g, '/')}`);
                 vscode.window.showInformationMessage(`${projectType} artifacts generated in generated_projects/${baseOutputDirName}.`);
 
             } else {

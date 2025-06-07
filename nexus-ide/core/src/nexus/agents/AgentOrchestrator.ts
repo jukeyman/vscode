@@ -104,6 +104,14 @@ export class AgentOrchestrator {
                 if (agentToExecute) {
                     this.log(`Routing task '${task.taskId}' to InfrastructureForgeAgent due to infrastructure generation keywords.`);
                 }
+            } else if (taskDescLower.includes("generate tests for blueprint") ||
+                       taskDescLower.includes("/generate_tests") ||
+                       (task.userInput?.blueprint?.testingStrategy)) {
+                agentToExecute = this.agents.get("TestingForgeAgent");
+                agentNameForExecution = "TestingForgeAgent";
+                if (agentToExecute) {
+                    this.log(`Routing task '${task.taskId}' to TestingForgeAgent due to test generation keywords.`);
+                }
             }
             // Add more routing rules for other agents here...
 
@@ -188,5 +196,3 @@ export class AgentOrchestrator {
     }
 }
 ```
-
-**3. `nexus-ide/core/src/nexus/ui/webviews/chat/ChatViewProvider.ts`**
