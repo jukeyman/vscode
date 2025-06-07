@@ -63,7 +63,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                         }
                         const blueprintPath = parts.slice(1).join(" ");
                         this.addMessageToChat('system', `Received request to generate backend from: ${blueprintPath}`);
-                        this.triggerBackendGeneration(blueprintPath, this.generateUniqueTaskId());
+                        this.triggerForgeAgent(blueprintPath, "BackendForgeAgent", `Generate backend code for blueprint: ${blueprintPath}`, "backend");
                         return;
                     } else if (lowerUserMessage.startsWith("/generate_frontend")) {
                         const parts = userMessage.split(/\s+/);
@@ -73,11 +73,21 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                         }
                         const blueprintPath = parts.slice(1).join(" ");
                         this.addMessageToChat('system', `Received request to generate frontend from: ${blueprintPath}`);
-                        this.triggerFrontendGeneration(blueprintPath, this.generateUniqueTaskId());
+                        this.triggerForgeAgent(blueprintPath, "FrontendForgeAgent", `Generate frontend code for blueprint: ${blueprintPath}`, "frontend");
+                        return;
+                    } else if (lowerUserMessage.startsWith("/generate_database")) {
+                        const parts = userMessage.split(/\s+/);
+                        if (parts.length < 2) {
+                            this.addMessageToChat('system', "Usage: /generate_database <path_to_blueprint.yaml>");
+                            return;
+                        }
+                        const blueprintPath = parts.slice(1).join(" ");
+                        this.addMessageToChat('system', `Received request to generate database artifacts from: ${blueprintPath}`);
+                        this.triggerForgeAgent(blueprintPath, "DatabaseForgeAgent", `Generate database artifacts for blueprint: ${blueprintPath}`, "database");
                         return;
                     }
                     else {
-                        const mockResponse = `Nexus AI (mock response): You said "${userMessage}". Supported commands: /design_system <description>, /generate_backend <path_to_blueprint.yaml>, /generate_frontend <path_to_blueprint.yaml>, /createfile <name> <content>.`;
+                        const mockResponse = `Nexus AI (mock response): You said "${userMessage}". Supported commands: /design_system <description>, /generate_backend <path>, /generate_frontend <path>, /generate_database <path>, /createfile <name> <content>.`;
                         this.addMessageToChat('agent', mockResponse);
                     }
                     break;
@@ -105,7 +115,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
                 case 'webviewReady':
                     console.log("ChatViewProvider: Webview reported ready.");
-                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", "/generate_backend blueprints/file.yaml", or "/generate_frontend blueprints/file.yaml".');
+                    this.addMessageToChat('system', 'Welcome to Nexus Chat! Try "/design_system your idea", "/generate_backend blueprints/file.yaml", etc.');
                     break;
             }
         });
@@ -154,7 +164,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                                           result.output.blueprintObject?.metadata?.blueprintName ||
                                           'generated_blueprint';
                     const safeBlueprintName = blueprintName.replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
-                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1); // Adjusted timestamp format
+                    const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1);
                     const blueprintFileName = `${safeBlueprintName}_${timestamp}.yaml`;
                     const blueprintFilePath = path.join(blueprintsDir, blueprintFileName);
 
@@ -191,15 +201,13 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private async triggerBackendGeneration(blueprintPathRelative: string, taskId: string) {
-        await this.triggerForgeAgent(blueprintPathRelative, taskId, "BackendForgeAgent", "backend");
-    }
-
-    private async triggerFrontendGeneration(blueprintPathRelative: string, taskId: string) {
-        await this.triggerForgeAgent(blueprintPathRelative, taskId, "FrontendForgeAgent", "frontend");
-    }
-
-    private async triggerForgeAgent(blueprintPathRelative: string, taskId: string, agentName: "BackendForgeAgent" | "FrontendForgeAgent", projectType: "backend" | "frontend") {
+    private async triggerForgeAgent(
+        blueprintPathRelative: string,
+        agentName: "BackendForgeAgent" | "FrontendForgeAgent" | "DatabaseForgeAgent",
+        taskDescriptionPrefix: string,
+        projectType: "backend" | "frontend" | "database"
+    ) {
+        const taskId = this.generateUniqueTaskId();
         const workspaceFolders = vscode.workspace.workspaceFolders;
         if (!workspaceFolders || workspaceFolders.length === 0) {
             this.addMessageToChat('system', `Error: No workspace open. Cannot read blueprint file for ${projectType} generation.`);
@@ -228,7 +236,7 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
 
         const task: AgentTask = {
             taskId: taskId,
-            description: `Generate ${projectType} code for blueprint: ${blueprintPathRelative}`,
+            description: `${taskDescriptionPrefix}: ${blueprintPathRelative}`,
             userInput: { blueprint: blueprintObject }
         };
 
@@ -239,23 +247,26 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
             if (result.status === 'success' && result.output?.fileSet) {
                 const fileSet = result.output.fileSet as Record<string, string>;
                 const fileCount = Object.keys(fileSet).length;
-                this.addMessageToChat('agent', `${agentName}: ${projectType} code (${fileCount} files) generated successfully!`);
+                this.addMessageToChat('agent', `${agentName}: ${projectType} artifacts (${fileCount} files) generated successfully!`);
 
                 const blueprintName = blueprintObject.projectMetadata?.projectName ||
                                       blueprintObject.metadata?.blueprintName ||
                                       path.basename(blueprintPathRelative, path.extname(blueprintPathRelative));
                 const safeBlueprintName = blueprintName.replace(/[^a-z0-9_.-]/gi, '_').toLowerCase();
-                const timestamp = new Date().toISOString().replace(/[.:T]/g, '-').slice(0,-5);
-                const outputDirRelative = path.join('generated_projects', `${projectType}_${safeBlueprintName}_${timestamp}`);
-                const outputDirFull = path.join(workspaceRootPath, outputDirRelative);
+                const timestamp = new Date().toISOString().replace(/[.:TZ]/g, '-').slice(0,-1);
 
-                await vscode.workspace.fs.createDirectory(vscode.Uri.file(outputDirFull));
-                this.addMessageToChat('system', `Output directory created: ${outputDirRelative.replace(/\\/g, '/')}`);
+                // Define base output directory relative to workspace root
+                const baseOutputDirRelative = path.join('generated_projects', `${projectType}_${safeBlueprintName}_${timestamp}`);
+                const baseOutputDirFull = path.join(workspaceRootPath, baseOutputDirRelative);
+
+                await vscode.workspace.fs.createDirectory(vscode.Uri.file(baseOutputDirFull));
+                this.addMessageToChat('system', `Output directory created: ${baseOutputDirRelative.replace(/\\/g, '/')}`);
 
                 let filesWritten = 0;
-                for (const relativeFilePathInSet in fileSet) { // relativeFilePathInSet is like 'src/main.js'
+                for (const relativeFilePathInSet in fileSet) {
                     const fileContent = fileSet[relativeFilePathInSet];
-                    const absoluteFilePath = path.join(outputDirFull, relativeFilePathInSet);
+                    // All paths from fileSet are relative to the root of the generated project structure
+                    const absoluteFilePath = path.join(baseOutputDirFull, relativeFilePathInSet);
                     const fileDir = path.dirname(absoluteFilePath);
 
                     try {
@@ -268,8 +279,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
                         console.error(`Error writing file ${absoluteFilePath}:`, fwe);
                     }
                 }
-                this.addMessageToChat('system', `${projectType} code (${filesWritten}/${fileCount} files) saved to: ${outputDirRelative.replace(/\\/g, '/')}`);
-                vscode.window.showInformationMessage(`${projectType} code generated in ${outputDirRelative}.`);
+                this.addMessageToChat('system', `${projectType} artifacts (${filesWritten}/${fileCount} files) saved to: ${baseOutputDirRelative.replace(/\\/g, '/')}`);
+                vscode.window.showInformationMessage(`${projectType} artifacts generated in ${baseOutputDirRelative}.`);
 
             } else {
                 const errorDetail = result.error || `Unknown error from ${agentName}.`;

@@ -28,11 +28,8 @@ export class AgentOrchestrator {
 
         this.agents.set(agent.config.agentName, agent);
 
-        // Initialization is now expected to be done in extension.ts before registration,
-        // especially if it needs extensionUri.
-        // if (agent.initialize && typeof agent.initialize === 'function') {
-        //     await agent.initialize();
-        // }
+        // Initialization (like loading prompts) is expected to be called in extension.ts
+        // using agent.initialize(context.extensionUri) before this registration.
         this.log(`Agent '${agent.config.agentName}' registered successfully (assumed pre-initialized if needed).`);
         this.agentBus.publish("agentRegistered", { agentName: agent.config.agentName });
     }
@@ -83,7 +80,7 @@ export class AgentOrchestrator {
                 agentToExecute = this.agents.get("BackendForgeAgent");
                 agentNameForExecution = "BackendForgeAgent";
                 if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to BackendForgeAgent due to backend generation keywords or blueprint content.`);
+                    this.log(`Routing task '${task.taskId}' to BackendForgeAgent due to backend generation keywords.`);
                 }
             } else if (taskDescLower.includes("generate frontend for blueprint") ||
                        taskDescLower.includes("/generate_frontend") ||
@@ -91,7 +88,15 @@ export class AgentOrchestrator {
                 agentToExecute = this.agents.get("FrontendForgeAgent");
                 agentNameForExecution = "FrontendForgeAgent";
                 if (agentToExecute) {
-                    this.log(`Routing task '${task.taskId}' to FrontendForgeAgent due to frontend generation keywords or blueprint content.`);
+                    this.log(`Routing task '${task.taskId}' to FrontendForgeAgent due to frontend generation keywords.`);
+                }
+            } else if (taskDescLower.includes("generate database for blueprint") ||
+                       taskDescLower.includes("/generate_database") ||
+                       (task.userInput?.blueprint?.databaseSpecification)) {
+                agentToExecute = this.agents.get("DatabaseForgeAgent");
+                agentNameForExecution = "DatabaseForgeAgent";
+                if (agentToExecute) {
+                    this.log(`Routing task '${task.taskId}' to DatabaseForgeAgent due to database generation keywords.`);
                 }
             }
             // Add more routing rules for other agents here...

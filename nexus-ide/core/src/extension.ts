@@ -11,7 +11,8 @@ import { AgentBus } from './nexus/agents/AgentBus';
 import { AgentOrchestrator } from './nexus/agents/AgentOrchestrator';
 import { ArchitectAgent } from './nexus/agents/personas/ArchitectAgent';
 import { BackendForgeAgent } from './nexus/agents/personas/BackendForgeAgent';
-import { FrontendForgeAgent } from './nexus/agents/personas/FrontendForgeAgent'; // Added FrontendForgeAgent
+import { FrontendForgeAgent } from './nexus/agents/personas/FrontendForgeAgent';
+import { DatabaseForgeAgent } from './nexus/agents/personas/DatabaseForgeAgent'; // Added DatabaseForgeAgent
 // UI Components
 import { ChatViewProvider } from './nexus/ui/webviews/chat/ChatViewProvider';
 
@@ -31,12 +32,12 @@ let promptEngineerPanel: vscode.WebviewPanel | undefined = undefined;
 let simulatorPanel: vscode.WebviewPanel | undefined = undefined;
 let simulatorPanelSimulationId: string | null = null;
 
-// Helper function to get nonce (if needed directly in this file for other webviews)
+// Helper function to get nonce
 function getNonce() {
     return randomBytes(16).toString('base64');
 }
 
-// Generalized getWebviewHtml function (needed for any webview panels directly managed here)
+// Generalized getWebviewHtml function
 function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlSubPath: string, jsFileName: string): string {
     const htmlDiskPath = vscode.Uri.joinPath(extensionUri, 'out', 'webviews', htmlSubPath);
     let htmlContent = "";
@@ -54,7 +55,7 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, htmlS
     htmlContent = htmlContent.replace(new RegExp('\\$\\{nonce\\}', 'g'), nonce);
     htmlContent = htmlContent.replace(/\$\{scriptUri\}/g, scriptUri.toString());
 
-    const stylesPathOnDisk = vscode.Uri.joinPath(extensionUri, 'out', 'webviews', nodePath.dirname(htmlSubPath), 'chat.css'); // Assuming chat.css for chat webview
+    const stylesPathOnDisk = vscode.Uri.joinPath(extensionUri, 'out', 'webviews', nodePath.dirname(htmlSubPath), 'chat.css');
     if (htmlSubPath.startsWith('chat') && fs.existsSync(stylesPathOnDisk.fsPath)) {
         const stylesUri = webview.asWebviewUri(stylesPathOnDisk);
         htmlContent = htmlContent.replace(/\$\{stylesUri\}/g, stylesUri.toString());
@@ -114,13 +115,25 @@ export async function activate(context: vscode.ExtensionContext) {
     // Instantiate and Register FrontendForgeAgent
     const frontendForgeAgent = new FrontendForgeAgent(modelRouter);
     try {
-        await frontendForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        await frontendForgeAgent.initialize(context.extensionUri);
         agentOrchestrator.registerAgent(frontendForgeAgent);
         aiOutputChannel.appendLine('FrontendForgeAgent registered successfully.');
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         aiOutputChannel.appendLine(`Failed to initialize or register FrontendForgeAgent: ${errorMsg}`);
         vscode.window.showErrorMessage(`FrontendForgeAgent could not be initialized: ${errorMsg}`);
+    }
+
+    // Instantiate and Register DatabaseForgeAgent
+    const databaseForgeAgent = new DatabaseForgeAgent(modelRouter);
+    try {
+        await databaseForgeAgent.initialize(context.extensionUri); // Pass extensionUri for resource loading
+        agentOrchestrator.registerAgent(databaseForgeAgent);
+        aiOutputChannel.appendLine('DatabaseForgeAgent registered successfully.');
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        aiOutputChannel.appendLine(`Failed to initialize or register DatabaseForgeAgent: ${errorMsg}`);
+        vscode.window.showErrorMessage(`DatabaseForgeAgent could not be initialized: ${errorMsg}`);
     }
 
     // Initialize Chat View Provider
@@ -152,12 +165,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Stubs for other commands from previous phases - ensure their full implementations are present
     // (These would typically be moved to separate files and imported for cleaner organization)
     // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.listAgents', async () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.validateAgentDefinitions', async () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.createAgentDefinition', async () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.addAgentToolPython', async () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openPromptEngineerUI', () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.openSimulator', async () => { /* ... */ }));
-    // context.subscriptions.push(vscode.commands.registerCommand('ai-ecosystem-core.generateSystemBlueprint', async () => { /* ... */ })); // This is the LLM-driven one
+    // ... (other commands)
 
 
     aiOutputChannel.appendLine('Nexus IDE - AI Ecosystem Core activation completed.');
