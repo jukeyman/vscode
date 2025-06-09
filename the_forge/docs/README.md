@@ -99,10 +99,13 @@ To eventually run and deploy The Forge, you would need to:
 2.  **Configure Terraform Backend:**
     *   Create a GCS bucket for Terraform state.
     *   Update `gcp_backbone_terraform/main.tf` with the backend configuration.
-3.  **API Keys and Secrets:**
-    *   Store all necessary API keys (Hugging Face, Kaggle, potentially others) and database credentials in Google Secret Manager.
-    *   Update service configurations to fetch secrets from Secret Manager.
-4.  **Build & Deploy:**
+3.  **Grant Service Account Permissions & Manage Secrets:**
+    *   The primary service account (e.g., `rick-gpt-433807@appspot.gserviceaccount.com`) or preferably dedicated service accounts for each module (e.g., `orchestrator-sa`, `udace-sa`) must be granted appropriate IAM roles in your GCP project for all services they interact with (GCS, BigQuery, Vertex AI, Cloud Tasks, Secret Manager, etc.).
+    *   All external API keys (Hugging Face, Kaggle) and sensitive credentials must be stored in Google Secret Manager. The respective service accounts will need `roles/secretmanager.secretAccessor` permission to fetch these secrets at runtime. The placeholder code and Terraform comments have been updated to reflect this pattern.
+4.  **API Keys and Secrets (Legacy - specific keys in Secret Manager):**
+    *   Store all necessary API keys (Hugging Face, Kaggle, potentially others) and database credentials in Google Secret Manager (as mentioned above).
+    *   Ensure service configurations are designed to fetch these secrets from Secret Manager at runtime using their assigned service account.
+5.  **Build & Deploy:**
     *   Use `gcloud builds submit --config the_forge/cloudbuild.yaml .` (or set up automated triggers) to build Docker images and deploy services.
 
 This `README.md` serves as the primary operating manual and will be updated as The Forge evolves.

@@ -48,8 +48,29 @@ provider "google" {
 // TODO: Define datasets and tables with schemas for: projects, datasets, models, papers, deployments
 
 // IAM Roles and Service Accounts
-// TODO: Define specific IAM roles (e.g., data-ingestor-role, model-trainer-role)
-// TODO: Define service accounts and bind roles
+// Example: Assigning the Storage Object Admin role to the specified service account
+// This allows the service account to manage objects in GCS buckets.
+// resource "google_project_iam_member" "storage_admin_for_rick_gpt" {
+//   project = var.gcp_project_id
+//   role    = "roles/storage.objectAdmin"
+//   member  = "serviceAccount:rick-gpt-433807@appspot.gserviceaccount.com"
+// }
+
+// Example: Granting the service account access to run Vertex AI Custom Jobs and access GCS
+// resource "google_project_iam_member" "vertex_ai_custom_job_user_for_rick_gpt" {
+//   project = var.gcp_project_id
+//   role    = "roles/aiplatform.customCodeServiceAgent" // A common role for custom jobs
+//   member  = "serviceAccount:rick-gpt-433807@appspot.gserviceaccount.com"
+// }
+
+// TODO: Define specific IAM roles (e.g., roles/bigquery.dataEditor, roles/cloudtasks.enqueuer,
+//       roles/secretmanager.secretAccessor, roles/aiplatform.user, etc.)
+//       and assign them to serviceAccount:rick-gpt-433807@appspot.gserviceaccount.com
+//       or, preferably, create dedicated service accounts for each Forge module/service
+//       following the Principle of Least Privilege. Each dedicated service account would then
+//       be granted only the permissions it needs for its specific tasks.
+//       For example, the Orchestrator might need BigQuery and Cloud Tasks permissions,
+//       while UDACE might need GCS and Secret Manager permissions.
 
 // Networking
 // TODO: Define VPC, subnets, firewall rules

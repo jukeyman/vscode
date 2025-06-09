@@ -7,6 +7,18 @@
 # Placeholder for Vertex AI Training job submission
 # from google.cloud import aiplatform
 
+# This script is intended to be run as a Vertex AI Custom Training Job.
+# When submitting the job, specify a service account (e.g.,
+# rick-gpt-433807@appspot.gserviceaccount.com, or a dedicated 'mdof-sa')
+# that has permissions for:
+# - Vertex AI (e.g., roles/aiplatform.user, roles/aiplatform.serviceAgent)
+# - Google Cloud Storage (GCS) to read datasets and write model artifacts (e.g., roles/storage.objectAdmin).
+# - Hugging Face Hub (if uploading models, credentials should be passed via Secret Manager).
+# GCP client libraries and Vertex AI Training environment will use ADC with this service account.
+# Example:
+# from google.cloud import storage
+# storage_client = storage.Client() # ADC
+
 def fine_tune_model(base_model_hf_id: str, dataset_path: str, training_args_dict: dict):
     print(f"Fine-tuning model {base_model_hf_id} on dataset {dataset_path}")
 

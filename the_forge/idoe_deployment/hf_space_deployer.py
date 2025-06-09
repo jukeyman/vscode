@@ -4,6 +4,22 @@
 
 # hf_api = HfApi(token="YOUR_HF_TOKEN") # Store token securely
 
+# This service deploys to Hugging Face Spaces. The Hugging Face API token
+# should be stored securely in Google Secret Manager.
+# When deployed on GCP (if this service itself runs on GCP, e.g. as a Cloud Function/Run),
+# the runtime service account (e.g., rick-gpt-433807@appspot.gserviceaccount.com, or 'idoe-sa')
+# needs IAM permissions for Secret Manager (roles/secretmanager.secretAccessor)
+# to fetch the HF_TOKEN.
+# from google.cloud import secretmanager
+# secret_client = secretmanager.SecretManagerServiceClient() # ADC
+# Example fetching a secret:
+# def get_secret(secret_id, project_id="your-gcp-project-id", version_id="latest"):
+#    name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
+#    response = secret_client.access_secret_version(request={"name": name})
+#    return response.payload.data.decode("UTF-8")
+# hf_token = get_secret("hf_api_token_for_forge")
+# hf_api = HfApi(token=hf_token)
+
 def generate_gradio_app_py(model_hf_id: str):
     print(f"Generating Gradio app.py for model: {model_hf_id}")
     app_py_content = f"""

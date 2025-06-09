@@ -10,7 +10,21 @@ app = FastAPI(title="The Forge - Orchestrator Core")
 # redis_client = redis.Redis(host='localhost', port=6379, db=0) # Configure as needed
 
 # Placeholder for Cloud Tasks client
-# tasks_client = tasks_v2.CloudTasksClient()
+# When deployed on GCP (e.g., Cloud Run, GKE, Vertex AI),
+# ensure the runtime service account (e.g., rick-gpt-433807@appspot.gserviceaccount.com,
+# or a more specific one for this service like 'orchestrator-sa@${var.gcp_project_id}.iam.gserviceaccount.com')
+# has the necessary IAM permissions for Google Cloud Tasks, BigQuery, Secret Manager (for API keys), etc.
+# Clients like tasks_client, BigQuery client, Secret Manager client, etc.,
+# will use Application Default Credentials (ADC) to authenticate.
+# Example:
+# from google.cloud import tasks_v2
+# tasks_client = tasks_v2.CloudTasksClient() # ADC is used automatically
+
+# from google.cloud import bigquery
+# bq_client = bigquery.Client() # ADC
+
+# from google.cloud import secretmanager
+# secret_client = secretmanager.SecretManagerServiceClient() #ADC
 # project = 'your-gcp-project'
 # location = 'your-gcp-location'
 # queue = 'your-task-queue'
