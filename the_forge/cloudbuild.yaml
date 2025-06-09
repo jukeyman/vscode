@@ -1,0 +1,95 @@
+# cloudbuild.yaml for The Forge Project
+
+steps:
+  # Step 1: Build the Orchestrator Core Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/orchestrator-core:$COMMIT_SHA' # Example tagging
+      - './orchestrator_core' # Path to Dockerfile directory
+    id: 'Build Orchestrator Core'
+
+  # Step 2: Push the Orchestrator Core image to Google Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/orchestrator-core:$COMMIT_SHA']
+    id: 'Push Orchestrator Core'
+
+  # Step 3: Build the UDACE Engine Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/udace-engine:$COMMIT_SHA'
+      - './udace_engine'
+    id: 'Build UDACE Engine'
+
+  # Step 4: Push the UDACE Engine image to Google Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/udace-engine:$COMMIT_SHA']
+    id: 'Push UDACE Engine'
+
+  # Step 5: Build the MDOF Forge Docker image
+  # Note: MDOF might involve more complex build steps for training images,
+  # potentially using Kaniko for unprivileged builds or custom scripts.
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/mdof-forge:$COMMIT_SHA'
+      - './mdof_forge'
+    id: 'Build MDOF Forge'
+
+  # Step 6: Push the MDOF Forge image to Google Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mdof-forge:$COMMIT_SHA']
+    id: 'Push MDOF Forge'
+
+  # Step 7: Build the IDOE Deployment Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/idoe-deployment:$COMMIT_SHA'
+      - './idoe_deployment'
+    id: 'Build IDOE Deployment'
+
+  # Step 8: Push the IDOE Deployment image to Google Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/idoe-deployment:$COMMIT_SHA']
+    id: 'Push IDOE Deployment'
+
+  # --- Placeholder for Deployment Steps ---
+  # These steps would deploy the services to Cloud Run, GKE, or other targets.
+  # Example for deploying Orchestrator Core to Cloud Run:
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   entrypoint: gcloud
+  #   args:
+  #     - 'run'
+  #     - 'deploy'
+  #     - 'orchestrator-core-service' # Name of your Cloud Run service
+  #     - '--image=gcr.io/$PROJECT_ID/orchestrator-core:$COMMIT_SHA'
+  #     - '--platform=managed'
+  #     - '--region=your-gcp-region' # Specify region
+  #     - '--allow-unauthenticated' # If it's a public service
+  #     - '--project=$PROJECT_ID'
+  #   id: 'Deploy Orchestrator Core to Cloud Run'
+
+  # TODO: Add steps for:
+  #   - Running tests (unit, integration)
+  #   - Applying Terraform changes (gcloud components install terraform)
+  #   - Deploying other services (UDACE workers, MDOF training jobs, IDOE deployments)
+
+images:
+  - 'gcr.io/$PROJECT_ID/orchestrator-core:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/udace-engine:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/mdof-forge:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/idoe-deployment:$COMMIT_SHA'
+
+# Define substitutions (optional, can also be set at trigger level)
+# _substitutions:
+#   COMMIT_SHA: 'dev' # Default for manual runs, automatically replaced by actual SHA in triggers
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  # machineType: 'N1_HIGHCPU_8' # Or other machine types as needed
